@@ -43,7 +43,6 @@ export default class Pdf2Image extends Plugin {
 			}
 		});
 	}
-
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
@@ -71,13 +70,26 @@ export default class Pdf2Image extends Plugin {
 			}
 		}
 	}
+	private insertImageLink(editor: Editor, imageLink: string) {
+		const cursor = editor.getCursor();
+		editor.replaceRange(imageLink + '\n\n', cursor); // Add an extra newline after the image link
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length + 2)); // Adjust cursor position accordingly
+	}
+
+	private getAttachmentFolderPath(): string {
+		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
+		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
+	}
 
 	private async handlePdf(editor: Editor, file: File) {
+		let progressNotice: Notice | null = null;
 		try {
 			const arrayBuffer = await file.arrayBuffer();
 			const typedArray = new Uint8Array(arrayBuffer);
 			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
 			const totalPages = pdf.numPages;
+
+			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0);
 
 			const pdfName = file.name.replace('.pdf', '');
 			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`);
@@ -97,6 +109,10 @@ export default class Pdf2Image extends Plugin {
 				const viewport = page.getViewport({ scale: 1.5 });
 				const canvas = document.createElement('canvas');
 				const context = canvas.getContext('2d');
+
+				if (progressNotice) {
+					progressNotice.setMessage(`Processing PDF: ${i}/${totalPages} pages`);
+				}
 
 				if (!context) {
 					throw new Error('Failed to get canvas context');
@@ -124,21 +140,13 @@ export default class Pdf2Image extends Plugin {
 			}
 
 			new Notice('PDF processed and images inserted successfully');
+			if (progressNotice) {
+				progressNotice.hide();
+			}
 		} catch (error) {
 			console.error('Failed to process PDF', error);
 			new Notice('Failed to process PDF');
 		}
-	}
-
-	private getAttachmentFolderPath(): string {
-		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
-		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
-	}
-
-	private insertImageLink(editor: Editor, imageLink: string) {
-		const cursor = editor.getCursor();
-		editor.replaceRange(imageLink + '\n\n', cursor); // Add an extra newline after the image link
-		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length + 2)); // Adjust cursor position accordingly
 	}
 }
 
