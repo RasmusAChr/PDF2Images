@@ -15,6 +15,8 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
+	private ribbonIconEl: HTMLElement | null = null;
+
 	async onload() {
 		await this.loadSettings();
 
@@ -24,17 +26,8 @@ export default class Pdf2Image extends Plugin {
 		// Load the PDF.js worker
 		pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
 
-		// Ribbon icon to open the modal
-		if (this.settings.enableRibbonIcon) {
-			this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
-				const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (activeLeaf) {
-					new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
-				} else {
-					new Notice('Please open a note to insert images');
-				}
-			});
-		}
+		// Update the ribbon icon based on the setting
+		this.updateRibbonIcon();
 
 		// Command to open the modal
 		this.addCommand({
@@ -56,6 +49,27 @@ export default class Pdf2Image extends Plugin {
 	}
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.updateRibbonIcon(); // Update the ribbon icon when settings are saved
+	}
+
+	private updateRibbonIcon() {
+		if (this.settings.enableRibbonIcon) {
+			if (!this.ribbonIconEl) {
+				this.ribbonIconEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
+					const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+					if (activeLeaf) {
+						new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
+					} else {
+						new Notice('Please open a note to insert images');
+					}
+				});
+			}
+		} else {
+			if (this.ribbonIconEl) {
+				this.ribbonIconEl.remove();
+				this.ribbonIconEl = null;
+			}
+		}
 	}
 
 	private async handlePdf(editor: Editor, file: File) {
