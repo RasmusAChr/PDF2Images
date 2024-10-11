@@ -1,0 +1,9 @@
+{
+	"id": "pdf2img",
+	"name": "PDF2Image",
+	"version": "1.2.1",
+	"minAppVersion": "0.15.0",
+	"description": "Turns a PDF into a series of images.",
+	"author": "RasmusAChr",
+	"isDesktopOnly": true
+}
