@@ -232,7 +232,6 @@ class PluginSettingPage extends PluginSettingTab {
 					});
 
 				// Add a button to open the folder selection modal
-				textComponent.inputEl.style.width = "calc(100% - 24px)";
 				const btn = createEl("button", {
 					cls: "clickable-icon",
 					attr: { type: "button", "aria-label": "Select folder" }
@@ -262,8 +261,7 @@ class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
 	}
 
 	getItems(): TFolder[] {
-		return this.app.vault.getAllLoadedFiles()
-			.filter((f) => f instanceof TFolder) as TFolder[];
+		return this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
 	}
 
 	getItemText(folder: TFolder): string {
