@@ -98,6 +98,26 @@ export default class Pdf2Image extends Plugin {
 		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
 	}
 
+	private async extractHeader(page: any): Promise<string> {
+		const textContent = await page.getTextContent();
+		const lines = textContent.items.map((item: any) => ({
+			text: 'str' in item ? item.str : '',
+			fontSize: item.transform[0] // Assuming the font size is in the first element of the transform array
+		}));
+
+		// Sort lines by font size in descending order
+		lines.sort((a: { fontSize: number; }, b: { fontSize: number; }) => b.fontSize - a.fontSize);
+
+		// Collect lines with the largest font size
+		const largestFontSize = lines[0]?.fontSize || 0;
+		const headerLines = lines.filter((line: { fontSize: any; text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.fontSize === largestFontSize && line.text.trim().length > 0);
+
+		// Join the header lines to form the complete header
+		const header = headerLines.map((line: { text: any; }) => line.text).join(' ').trim();
+
+		return header;
+	}
+
 	/**
 	 * Handles the conversion of a PDF file to images and inserts them into the editor.
 	 * 
@@ -119,98 +139,90 @@ export default class Pdf2Image extends Plugin {
 		let progressNotice: Notice | null = null;
 		try {
 			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
-			const typedArray = new Uint8Array(arrayBuffer); // Convert the array buffer to a typed array
-			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF
-			const totalPages = pdf.numPages; // Get the total number of pages
+			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
+			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
+			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
 
-			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show the progress notice
+			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
-			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name
-			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`); // Get the folder path for the images
+			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
+			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
 
-			// Check if the folder exists and create a unique folder name if it does
-			let folderIndex = 0;
-			while (await this.app.vault.adapter.exists(folderPath)) {
-				folderIndex++;
-				folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`);
+			let folderIndex = 0; // Initialize folder index
+			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
+				folderIndex++; // Increment folder index
+				folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
 
-			const imageLinks: string[] = []; // Array to store image links
+			const imageLinks: string[] = []; // Initialize an array to store image links
 
-			for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+			for (let pageNum = 1; pageNum <= totalPages; pageNum++) { // Loop through each page of the PDF
 				const page = await pdf.getPage(pageNum); // Get the page
-				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport
-				const canvas = document.createElement('canvas'); // Create a canvas
+				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport with the specified resolution
+				const canvas = document.createElement('canvas'); // Create a canvas element
 				const context = canvas.getContext('2d'); // Get the canvas context
 
-				if (!context) {
-					throw new Error('Failed to get canvas context');
+				if (!context) { // Check if the context is null
+					throw new Error('Failed to get canvas context'); // Throw an error if context is null
 				}
 
-				canvas.height = viewport.height;
-				canvas.width = viewport.width;
+				canvas.height = viewport.height; // Set the canvas height
+				canvas.width = viewport.width; // Set the canvas width
 
 				const renderContext = {
-					canvasContext: context,
-					viewport: viewport
+					canvasContext: context, // Set the canvas context
+					viewport: viewport // Set the viewport
 				};
 
 				await page.render(renderContext).promise; // Render the page to the canvas
 
-				const blob = await new Promise<Blob>((resolve, reject) => {
+				const blob = await new Promise<Blob>((resolve, reject) => { // Create a blob from the canvas
 					canvas.toBlob(blob => {
 						if (blob) {
-							resolve(blob);
+							resolve(blob); // Resolve the promise with the blob
 						} else {
-							reject(new Error('Failed to create image blob'));
+							reject(new Error('Failed to create image blob')); // Reject the promise if blob creation fails
 						}
 					}, 'image/png');
 				});
 
-				const imageName = `page_${pageNum}.png`;
-				const imagePath = `${folderPath}/${imageName}`;
-				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image
+				const imageName = `page_${pageNum}.png`; // Create the image name
+				const imagePath = `${folderPath}/${imageName}`; // Create the image path
+				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image to the vault
 
-				let imageLink = `![${imageName}](${imagePath})`;
+				const header = await this.extractHeader(page); // Extract the header from the page
+				let imageLink = `${header ? `## ${header}\n` : ''}![${imageName}](${imagePath})`; // Create the image link with header if available
 				if (this.settings.emptyLine) {
-					imageLink += '\n'; // Add an extra newline after the image link
+					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
 				}
-				imageLinks.push(imageLink); // Store the image link
+				imageLinks.push(imageLink); // Add the image link to the array
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
 
 				// If insertion method is 'Procedual', insert the image link immediately
 				if (this.settings.insertionMethod === 'Procedual') {
-					this.insertImageLink(editor, imageLink);
+					this.insertImageLink(editor, imageLink); // Insert the image link into the editor if the method is 'Procedual'
 				}
 			}
 
 			// If insertion method is 'Batch', insert all image links at once
 			if (this.settings.insertionMethod === 'Batch') {
-				const allImageLinks = imageLinks.join('\n'); // Create a string containing all image links
-
-				// Save the current scroll position
-				const scrollInfo = editor.getScrollInfo();
-
-				// Get the current cursor position
-				const cursor = editor.getCursor();
-
-				// Insert all image links at once
-				editor.replaceRange(allImageLinks, cursor);
-
-				// Restore the scroll position
-				editor.scrollTo(scrollInfo.left, scrollInfo.top);
+				const allImageLinks = imageLinks.join('\n'); // Join all image links into a single string
+				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
+				const cursor = editor.getCursor(); // Get the current cursor position
+				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor
+				editor.scrollTo(scrollInfo.left, scrollInfo.top); // Restore the scroll position
 			}
 
-			new Notice('PDF processing complete'); // Show the final notice
+			new Notice('PDF processing complete'); // Show a notice when processing is complete
 		} catch (error) {
-			console.error(error);
-			new Notice('Failed to process PDF');
+			console.error(error); // Log the error to the console
+			new Notice('Failed to process PDF'); // Show a notice if processing fails
 		} finally {
 			if (progressNotice) {
-				progressNotice.hide();
+				progressNotice.hide(); // Hide the progress notice
 			}
 		}
 	}
