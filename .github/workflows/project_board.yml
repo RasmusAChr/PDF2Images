@@ -14,5 +14,4 @@ jobs:
         uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/users/RasmusAChr/projects/1
-          column-name: "Todo"
           github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
