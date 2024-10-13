@@ -15,84 +15,109 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
-	private ribbonIconEl: HTMLElement | null = null;
+	private ribbonEl: HTMLElement | null = null;
+	PDFWORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
 
+	// When plugin loads
 	async onload() {
-		await this.loadSettings();
+		await this.loadSettings(); // Load the settings
+		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
+		this.updateRibbon(); // Update the ribbon based on the setting
 
-		// Settings tab for plugin settings
-		this.addSettingTab(new PluginSettingPage(this.app, this));
-
-		// Load the PDF.js worker
-		pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
-
-		// Update the ribbon based on the setting
-		this.updateRibbon();
+		pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
 
 		// Command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
 			name: 'Convert PDF to Images',
 			callback: () => {
-				const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (activeLeaf) {
-					new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
-				} else {
-					new Notice('Please open a note to insert images');
-				}
+				this.openPDFToImageModal()
 			}
 		});
 	}
+
+	// Load settings from the data file
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
+
+	// Save settings to the data file
 	async saveSettings() {
 		await this.saveData(this.settings);
 		this.updateRibbon();
 	}
 
+	// Open the modal to convert PDF to images
+	private openPDFToImageModal() {
+		const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (activeLeaf) {
+			new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
+		} else {
+			new Notice('Please open a note to insert images');
+		}
+	}
+
+	// Add a ribbon icon to the toolbar if the setting is enabled
 	private updateRibbon() {
 		if (this.settings.enableRibbonIcon) {
-			if (!this.ribbonIconEl) {
-				this.ribbonIconEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
-					const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-					if (activeLeaf) {
-						new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
-					} else {
-						new Notice('Please open a note to insert images');
-					}
+			if (!this.ribbonEl) {
+				this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
+					this.openPDFToImageModal()
 				});
 			}
 		} else {
-			if (this.ribbonIconEl) {
-				this.ribbonIconEl.remove();
-				this.ribbonIconEl = null;
+			if (this.ribbonEl) {
+				this.ribbonEl.remove();
+				this.ribbonEl = null;
 			}
 		}
 	}
+
+	// Insert the image link at the cursor position.
+	// Note: The cursor position here is based on the editor's state at the time of insertion, 
+	// and do not reflect the real-time cursor position if the user continues typing.
 	private insertImageLink(editor: Editor, imageLink: string) {
-		const cursor = editor.getCursor();
+		const cursor = editor.getCursor(); // Get the current cursor position
 		editor.replaceRange(imageLink + '\n\n', cursor); // Add an extra newline after the image link
 		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length + 2)); // Adjust cursor position accordingly
 	}
 
+	// Get the folder path where the attachments will be saved
+	// Note: If the folder path is not set, use the current note's folder
 	private getAttachmentFolderPath(): string {
 		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
 		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
 	}
 
+	/**
+	 * Handles the conversion of a PDF file to images and inserts them into the editor.
+	 * 
+	 * @param editor - The editor instance where the images will be inserted.
+	 * @param file - The PDF file to be processed.
+	 * 
+	 * @remarks
+	 * This function performs the following steps:
+	 * 1. Converts the PDF file to an array buffer and then to a typed array.
+	 * 2. Loads the PDF document and retrieves the total number of pages.
+	 * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
+	 * 4. Iterates through each page of the PDF, rendering it to a canvas and converting the canvas to a PNG image.
+	 * 5. Saves each image to the created folder and inserts a link to the image in the editor.
+	 * 6. Displays progress notifications during the process and a final notification upon completion.
+	 * 
+	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
+	 */
 	private async handlePdf(editor: Editor, file: File) {
 		let progressNotice: Notice | null = null;
 		try {
-			const arrayBuffer = await file.arrayBuffer();
-			const typedArray = new Uint8Array(arrayBuffer);
-			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-			const totalPages = pdf.numPages;
+			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
+			const typedArray = new Uint8Array(arrayBuffer); // Convert the array buffer to a typed array
+			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF
+			const totalPages = pdf.numPages; // Get the total number of pages
 
-			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0);
+			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show the progress notice
 
-			const pdfName = file.name.replace('.pdf', '');
-			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`);
+			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name
+			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`); // Get the folder path for the images
 
 			// Check if the folder exists and create a unique folder name if it does
 			let folderIndex = 0;
@@ -101,55 +126,74 @@ export default class Pdf2Image extends Plugin {
 				folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`);
 			}
 
-			// Create the folder
-			await this.app.vault.createFolder(folderPath);
+			await this.app.vault.createFolder(folderPath); // Create the folder
 
+			// Loop through each page in the PDF
 			for (let i = 1; i <= totalPages; i++) {
-				const page = await pdf.getPage(i);
-				const viewport = page.getViewport({ scale: 1.5 });
-				const canvas = document.createElement('canvas');
-				const context = canvas.getContext('2d');
+				const page = await pdf.getPage(i); // Get the page
+				const viewport = page.getViewport({ scale: 1.5 }); // Get the viewport (and choosing the scale)
+				const canvas = document.createElement('canvas'); // Create a canvas element
+				const context = canvas.getContext('2d'); // Get the canvas context
 
+				// Update the progress notice
 				if (progressNotice) {
 					progressNotice.setMessage(`Processing PDF: ${i}/${totalPages} pages`);
 				}
 
+				// Throw error if the canvas context is not available
 				if (!context) {
 					throw new Error('Failed to get canvas context');
 				}
 
-				canvas.height = viewport.height;
-				canvas.width = viewport.width;
+				canvas.height = viewport.height; // Set the canvas height
+				canvas.width = viewport.width; // Set the canvas width
 
-				await page.render({ canvasContext: context, viewport: viewport }).promise;
+				await page.render({ canvasContext: context, viewport: viewport }).promise; // Render the page to the canvas
 
+				// Convert the canvas to a blob (Binary Large Object)
+				// Note: A blob is a file-like object of immutable raw data
 				const imageBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 
+				// Check if the image blob was not created successfully
 				if (!imageBlob) {
 					throw new Error('Failed to create image blob');
 				}
 
-				const imageArrayBuffer = await imageBlob.arrayBuffer();
+				const imageArrayBuffer = await imageBlob.arrayBuffer(); // Convert the image blob to an array buffer
 
-				const fileName = `${pdfName}_${i}.png`;
-				const filePath = normalizePath(`${folderPath}/${fileName}`);
+				const fileName = `${pdfName}_${i}.png`; // Create the image file name
+				const filePath = normalizePath(`${folderPath}/${fileName}`); // Create the image file path
 
-				await this.app.vault.createBinary(filePath, imageArrayBuffer);
+				await this.app.vault.createBinary(filePath, imageArrayBuffer); // Create the image file from the array buffer
 
-				this.insertImageLink(editor, `![[${folderPath}/${fileName}]]`);
+				this.insertImageLink(editor, `![[${folderPath}/${fileName}]]`); // Insert the image link at the cursor position
 			}
 
+			// Notify the user that the PDF has been processed and images have been inserted successfully
 			new Notice('PDF processed and images inserted successfully');
+
+			// Hide the progress notice
 			if (progressNotice) {
 				progressNotice.hide();
 			}
-		} catch (error) {
+		}
+		// Catch the error if the canvas context cannot be obtained or if the image blob creation fails.
+		catch (error) {
 			console.error('Failed to process PDF', error);
 			new Notice('Failed to process PDF');
 		}
 	}
 }
 
+
+/**
+ * A modal dialog for selecting a PDF file and converting it to images.
+ * 
+ * This modal allows the user to select a PDF file from their file system and submit it for conversion.
+ * It provides a file input element for selecting the PDF and a button to trigger the conversion process.
+ * 
+ * @extends Modal
+ */
 class PdfToImageModal extends Modal {
 	private file: File | null = null;
 
@@ -157,6 +201,20 @@ class PdfToImageModal extends Modal {
 		super(app);
 	}
 
+	/**
+	 * Handles the opening of the plugin interface.
+	 * 
+	 * This method sets up the UI elements for the user to select a PDF file and initiate the conversion process.
+	 * It creates a header, a file input for PDF selection, and a submit button.
+	 * 
+	 * - The file input allows the user to select a PDF file.
+	 * - The submit button triggers the conversion process if a file is selected, otherwise it shows a notice.
+	 * 
+	 * @remarks
+	 * - The selected file is stored in `this.file`.
+	 * - The `onSubmit` method is called with the selected file when the submit button is clicked.
+	 * - If no file is selected, a notice is displayed to the user.
+	 */
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
@@ -179,12 +237,23 @@ class PdfToImageModal extends Modal {
 		};
 	}
 
+	/**
+	 * Handles the closing of the plugin's UI component.
+	 * This method is called when the component is closed and is responsible for cleaning up the content element.
+	 * It empties the content element to ensure no residual elements remain.
+	 */
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
 
+/**
+ * Represents the settings page for the plugin.
+ *
+ * @class PluginSettingPage
+ * @extends {PluginSettingTab}
+ */
 class PluginSettingPage extends PluginSettingTab {
 	plugin: Pdf2Image;
 
@@ -198,6 +267,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		containerEl.empty();
 
+		// Enable Headers setting
 		new Setting(containerEl)
 			.setName('Enable headers (not implemented yet)')
 			.setDesc('Finds headers in images and inserts them above the image.')
@@ -209,6 +279,7 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Enable Ribbon Icon setting
 		new Setting(containerEl)
 			.setName('Enable ribbon icon')
 			.setDesc('Adds a ribbon icon to the toolbar to open the modal.')
@@ -219,6 +290,7 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Attachment Folder Path setting
 		new Setting(containerEl)
 			.setName('Attachment Folder Path')
 			.setDesc('Specify the folder path where attachments will be saved.')
@@ -255,19 +327,49 @@ class PluginSettingPage extends PluginSettingTab {
 	}
 }
 
+
+/**
+ * A modal that provides a fuzzy search interface for selecting folders within the vault.
+ * Extends the `FuzzySuggestModal` class to offer folder suggestions.
+ *
+ * @template TFolder - The type representing a folder.
+ */
 class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
+	/**
+	 * Creates an instance of FolderSuggestModal.
+	 *
+	 * @param {App} app - The application instance.
+	 * @param {(folder: TFolder) => void} onChoose - A callback function to be called when a folder is chosen.
+	 */
 	constructor(app: App, private onChoose: (folder: TFolder) => void) {
 		super(app);
 	}
 
+	/**
+	 * Retrieves all folders from the vault.
+	 *
+	 * @returns {TFolder[]} An array of folders.
+	 */
 	getItems(): TFolder[] {
 		return this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
 	}
 
+	/**
+	 * Gets the display text for a folder.
+	 *
+	 * @param {TFolder} folder - The folder to get the text for.
+	 * @returns {string} The path of the folder.
+	 */
 	getItemText(folder: TFolder): string {
 		return folder.path;
 	}
 
+	/**
+	 * Handles the event when a folder is chosen.
+	 *
+	 * @param {TFolder} folder - The chosen folder.
+	 * @param {MouseEvent | KeyboardEvent} evt - The event that triggered the choice.
+	 */
 	onChooseItem(folder: TFolder, evt: MouseEvent | KeyboardEvent): void {
 		this.onChoose(folder);
 	}
