@@ -1,8 +1,8 @@
-name: Move assigned card
+name: Issue adder to project board
 on:
   issues:
     types:
-      - assigned
+      - opened
 jobs:
   move-assigned-card:
     runs-on: ubuntu-latest
