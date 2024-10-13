@@ -203,7 +203,10 @@ export default class Pdf2Image extends Plugin {
 				const imagePath = `${folderPath}/${imageName}`; // Create the image path
 				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image to the vault
 
-				const header = await this.extractHeader(page); // Extract the header from the page
+				let header = '';
+				if (this.settings.enableHeaders) {
+					header = await this.extractHeader(page); // Extract the header from the page if enabled
+				}
 				let imageLink = `${header ? `## ${header}\n` : ''}![${imageName}](${imagePath})`; // Create the image link with header if available
 				if (this.settings.emptyLine) {
 					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
@@ -355,7 +358,6 @@ class PluginSettingPage extends PluginSettingTab {
 			.setName('Enable headers (not implemented yet)')
 			.setDesc('Finds headers in images and inserts them above the image.')
 			.addToggle(toggle => toggle
-				.setDisabled(true)
 				.setValue(this.plugin.settings.enableHeaders)
 				.onChange(async (value) => {
 					this.plugin.settings.enableHeaders = value;
