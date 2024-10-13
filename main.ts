@@ -3,7 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 interface PluginSettings {
 	enableHeaders: boolean;
-	enableRibbonIcon: boolean;
+	enableRibbonButton: boolean;
 	attachmentFolderPath: string;
 	imageResolution: number;
 	emptyLine: boolean;
@@ -12,7 +12,7 @@ interface PluginSettings {
 
 const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
-	enableRibbonIcon: true,
+	enableRibbonButton: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
 	emptyLine: true,
@@ -63,9 +63,9 @@ export default class Pdf2Image extends Plugin {
 		}
 	}
 
-	// Add a ribbon icon to the toolbar if the setting is enabled
+	// Add a ribbon button to the toolbar if the setting is enabled
 	private updateRibbon() {
-		if (this.settings.enableRibbonIcon) {
+		if (this.settings.enableRibbonButton) {
 			if (!this.ribbonEl) {
 				this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
 					this.openPDFToImageModal()
@@ -324,10 +324,10 @@ class PluginSettingPage extends PluginSettingTab {
 
 		containerEl.empty();
 
-		// Image Resolution setting
+		// Image Quality setting
 		new Setting(containerEl)
-			.setName('Image Resolution')
-			.setDesc('The resolution of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
+			.setName('Image Quality')
+			.setDesc('The quality of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
 			.addDropdown(dropdown => dropdown
 				.addOption('0.5', '0.5x')
 				.addOption('0.75', '0.75x')
@@ -342,7 +342,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Insertion Method setting
 		new Setting(containerEl)
-			.setName('Insertion Method')
+			.setName('Image Insertion Method')
 			.setDesc('Choose how images are inserted into the editor.')
 			.addDropdown(dropdown => dropdown
 				.addOption('Procedual', 'Procedual (inserts images one by one)')
@@ -375,14 +375,14 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		// Enable Ribbon Icon setting
+		// Enable Ribbon button setting
 		new Setting(containerEl)
-			.setName('Enable ribbon icon')
-			.setDesc('Adds a ribbon icon to the toolbar to open the modal.')
+			.setName('Ribbon button')
+			.setDesc('Adds a ribbon button to the toolbar to open the conversion modal.')
 			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.enableRibbonIcon)
+				.setValue(this.plugin.settings.enableRibbonButton)
 				.onChange(async (value) => {
-					this.plugin.settings.enableRibbonIcon = value;
+					this.plugin.settings.enableRibbonButton = value;
 					await this.plugin.saveSettings();
 				}));
 
