@@ -11,4 +11,4 @@ jobs:
         with:
           project-url: https://github.com/users/RasmusAChr/projects/1
           column: Todo
-          repo-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
