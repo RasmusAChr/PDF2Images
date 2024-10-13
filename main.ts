@@ -20,14 +20,14 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// Adds settings tab for user to configure plugin settings
+		// Settings tab for plugin settings
 		this.addSettingTab(new PluginSettingPage(this.app, this));
 
 		// Load the PDF.js worker
 		pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
 
-		// Update the ribbon icon based on the setting
-		this.updateRibbonIcon();
+		// Update the ribbon based on the setting
+		this.updateRibbon();
 
 		// Command to open the modal
 		this.addCommand({
@@ -48,10 +48,10 @@ export default class Pdf2Image extends Plugin {
 	}
 	async saveSettings() {
 		await this.saveData(this.settings);
-		this.updateRibbonIcon(); // Update the ribbon icon when settings are saved
+		this.updateRibbon();
 	}
 
-	private updateRibbonIcon() {
+	private updateRibbon() {
 		if (this.settings.enableRibbonIcon) {
 			if (!this.ribbonIconEl) {
 				this.ribbonIconEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
