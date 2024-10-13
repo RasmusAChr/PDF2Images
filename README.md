@@ -19,6 +19,7 @@ Specify the folder where images generated from the PDF will be saved. You can ei
 Toggle this option to add or remove a convenient icon in the toolbar for quick access to the PDF-to-images conversion modal.
 
 ## Planned features
+- [ ] Follow/Unfollow insertion of images.
 - [ ] Enable headers: Will automatically detect headers in images and insert text above the corresponding image.
 - [ ] Extract images and text from PDF: Instead of inserting a picture of the PDF page, it will analyze the page, extract text and images, and insert it into the note.
 
