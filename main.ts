@@ -171,7 +171,10 @@ export default class Pdf2Image extends Plugin {
 				const imagePath = `${folderPath}/${imageName}`;
 				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image
 
-				const imageLink = `![${imageName}](${imagePath})`;
+				let imageLink = `![${imageName}](${imagePath})`;
+				if (this.settings.emptyLine) {
+					imageLink += '\n'; // Add an extra newline after the image link
+				}
 				imageLinks.push(imageLink); // Store the image link
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
@@ -186,11 +189,7 @@ export default class Pdf2Image extends Plugin {
 			const cursor = editor.getCursor();
 
 			// Insert all image links at once
-			if (this.settings.emptyLine) {
-				editor.replaceRange(allImageLinks + '\n\n', cursor); // Add an extra newline after the image links
-			} else {
-				editor.replaceRange(allImageLinks, cursor);
-			}
+			editor.replaceRange(allImageLinks, cursor);
 
 			// Restore the scroll position
 			editor.scrollTo(scrollInfo.left, scrollInfo.top);
