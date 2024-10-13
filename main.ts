@@ -103,16 +103,16 @@ export default class Pdf2Image extends Plugin {
 	 * @param file - The PDF file to be processed.
 	 * 
 	 * @remarks
-	 * This function performs the following steps:
-	 * 1. Converts the PDF file to an array buffer and then to a typed array.
-	 * 2. Loads the PDF document and retrieves the total number of pages.
-	 * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
-	 * 4. Iterates through each page of the PDF, rendering it to a canvas and converting the canvas to a PNG image.
-	 * 5. Saves each image to the created folder and inserts a link to the image in the editor.
-	 * 6. Displays progress notifications during the process and a final notification upon completion.
-	 * 
-	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
-	 */
+ * This function performs the following steps:
+ * 1. Converts the PDF file to an array buffer and then to a typed array.
+ * 2. Loads the PDF document and retrieves the total number of pages.
+ * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
+ * 4. Iterates through each page of the PDF, rendering it to a canvas and converting the canvas to a PNG image.
+ * 5. Saves each image to the created folder and inserts a link to the image in the editor.
+ * 6. Displays progress notifications during the process and a final notification upon completion.
+ * 
+ * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
+ */
 	private async handlePdf(editor: Editor, file: File) {
 		let progressNotice: Notice | null = null;
 		try {
@@ -135,59 +135,74 @@ export default class Pdf2Image extends Plugin {
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
 
-			// Loop through each page in the PDF
-			for (let i = 1; i <= totalPages; i++) {
-				const page = await pdf.getPage(i); // Get the page
-				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport (and choosing the scale)
-				const canvas = document.createElement('canvas'); // Create a canvas element
+			const imageLinks: string[] = []; // Array to store image links
+
+			for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+				const page = await pdf.getPage(pageNum); // Get the page
+				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport
+				const canvas = document.createElement('canvas'); // Create a canvas
 				const context = canvas.getContext('2d'); // Get the canvas context
 
-				// Update the progress notice
-				if (progressNotice) {
-					progressNotice.setMessage(`Processing PDF: ${i}/${totalPages} pages`);
-				}
-
-				// Throw error if the canvas context is not available
 				if (!context) {
 					throw new Error('Failed to get canvas context');
 				}
 
-				canvas.height = viewport.height; // Set the canvas height
-				canvas.width = viewport.width; // Set the canvas width
+				canvas.height = viewport.height;
+				canvas.width = viewport.width;
 
-				await page.render({ canvasContext: context, viewport: viewport }).promise; // Render the page to the canvas
+				const renderContext = {
+					canvasContext: context,
+					viewport: viewport
+				};
 
-				// Convert the canvas to a blob (Binary Large Object)
-				// Note: A blob is a file-like object of immutable raw data
-				const imageBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+				await page.render(renderContext).promise; // Render the page to the canvas
 
-				// Check if the image blob was not created successfully
-				if (!imageBlob) {
-					throw new Error('Failed to create image blob');
-				}
+				const blob = await new Promise<Blob>((resolve, reject) => {
+					canvas.toBlob(blob => {
+						if (blob) {
+							resolve(blob);
+						} else {
+							reject(new Error('Failed to create image blob'));
+						}
+					}, 'image/png');
+				});
 
-				const imageArrayBuffer = await imageBlob.arrayBuffer(); // Convert the image blob to an array buffer
+				const imageName = `page_${pageNum}.png`;
+				const imagePath = `${folderPath}/${imageName}`;
+				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image
 
-				const fileName = `${pdfName}_${i}.png`; // Create the image file name
-				const filePath = normalizePath(`${folderPath}/${fileName}`); // Create the image file path
+				const imageLink = `![${imageName}](${imagePath})`;
+				imageLinks.push(imageLink); // Store the image link
 
-				await this.app.vault.createBinary(filePath, imageArrayBuffer); // Create the image file from the array buffer
-
-				this.insertImageLink(editor, `![[${folderPath}/${fileName}]]`); // Insert the image link at the cursor position
+				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
 			}
 
-			// Notify the user that the PDF has been processed and images have been inserted successfully
-			new Notice('PDF processed and images inserted successfully');
+			const allImageLinks = imageLinks.join('\n'); // Create a string containing all image links
 
-			// Hide the progress notice
+			// Save the current scroll position
+			const scrollInfo = editor.getScrollInfo();
+
+			// Get the current cursor position
+			const cursor = editor.getCursor();
+
+			// Insert all image links at once
+			if (this.settings.emptyLine) {
+				editor.replaceRange(allImageLinks + '\n\n', cursor); // Add an extra newline after the image links
+			} else {
+				editor.replaceRange(allImageLinks, cursor);
+			}
+
+			// Restore the scroll position
+			editor.scrollTo(scrollInfo.left, scrollInfo.top);
+
+			new Notice('PDF processing complete'); // Show the final notice
+		} catch (error) {
+			console.error(error);
+			new Notice('Failed to process PDF');
+		} finally {
 			if (progressNotice) {
 				progressNotice.hide();
 			}
-		}
-		// Catch the error if the canvas context cannot be obtained or if the image blob creation fails.
-		catch (error) {
-			console.error('Failed to process PDF', error);
-			new Notice('Failed to process PDF');
 		}
 	}
 }
