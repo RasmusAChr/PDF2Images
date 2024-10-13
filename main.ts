@@ -355,8 +355,8 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Enable Headers setting
 		new Setting(containerEl)
-			.setName('Enable headers (not implemented yet)')
-			.setDesc('Finds headers in images and inserts them above the image.')
+			.setName('Insert headers (BETA)')
+			.setDesc('Finds headers in images and inserts them above the image. This is a beta feature and may not work as expected.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableHeaders)
 				.onChange(async (value) => {
