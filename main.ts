@@ -298,18 +298,6 @@ class PluginSettingPage extends PluginSettingTab {
 
 		containerEl.empty();
 
-		// Enable Headers setting
-		new Setting(containerEl)
-			.setName('Enable headers (not implemented yet)')
-			.setDesc('Finds headers in images and inserts them above the image.')
-			.addToggle(toggle => toggle
-				.setDisabled(true)
-				.setValue(this.plugin.settings.enableHeaders)
-				.onChange(async (value) => {
-					this.plugin.settings.enableHeaders = value;
-					await this.plugin.saveSettings();
-				}));
-
 		// Image Resolution setting
 		new Setting(containerEl)
 			.setName('Image Resolution')
@@ -326,17 +314,6 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		// Empty Line setting
-		new Setting(containerEl)
-			.setName('Empty Line after image')
-			.setDesc('Adds an empty line after each image.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.emptyLine)
-				.onChange(async (value) => {
-					this.plugin.settings.emptyLine = value;
-					await this.plugin.saveSettings();
-				}));
-
 		// Insertion Method setting
 		new Setting(containerEl)
 			.setName('Insertion Method')
@@ -347,6 +324,29 @@ class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.insertionMethod)
 				.onChange(async (value) => {
 					this.plugin.settings.insertionMethod = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Enable Headers setting
+		new Setting(containerEl)
+			.setName('Enable headers (not implemented yet)')
+			.setDesc('Finds headers in images and inserts them above the image.')
+			.addToggle(toggle => toggle
+				.setDisabled(true)
+				.setValue(this.plugin.settings.enableHeaders)
+				.onChange(async (value) => {
+					this.plugin.settings.enableHeaders = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Empty Line setting
+		new Setting(containerEl)
+			.setName('Empty Line after image')
+			.setDesc('Adds an empty line after each image.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.emptyLine)
+				.onChange(async (value) => {
+					this.plugin.settings.emptyLine = value;
 					await this.plugin.saveSettings();
 				}));
 
