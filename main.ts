@@ -7,6 +7,7 @@ interface PluginSettings {
 	attachmentFolderPath: string;
 	imageResolution: number;
 	emptyLine: boolean;
+	insertionMethod: string;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
@@ -14,7 +15,8 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableRibbonIcon: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
-	emptyLine: true
+	emptyLine: true,
+	insertionMethod: 'Procedual'
 }
 
 export default class Pdf2Image extends Plugin {
@@ -178,21 +180,29 @@ export default class Pdf2Image extends Plugin {
 				imageLinks.push(imageLink); // Store the image link
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
+
+				// If insertion method is 'Procedual', insert the image link immediately
+				if (this.settings.insertionMethod === 'Procedual') {
+					this.insertImageLink(editor, imageLink);
+				}
 			}
 
-			const allImageLinks = imageLinks.join('\n'); // Create a string containing all image links
+			// If insertion method is 'Batch', insert all image links at once
+			if (this.settings.insertionMethod === 'Batch') {
+				const allImageLinks = imageLinks.join('\n'); // Create a string containing all image links
 
-			// Save the current scroll position
-			const scrollInfo = editor.getScrollInfo();
+				// Save the current scroll position
+				const scrollInfo = editor.getScrollInfo();
 
-			// Get the current cursor position
-			const cursor = editor.getCursor();
+				// Get the current cursor position
+				const cursor = editor.getCursor();
 
-			// Insert all image links at once
-			editor.replaceRange(allImageLinks, cursor);
+				// Insert all image links at once
+				editor.replaceRange(allImageLinks, cursor);
 
-			// Restore the scroll position
-			editor.scrollTo(scrollInfo.left, scrollInfo.top);
+				// Restore the scroll position
+				editor.scrollTo(scrollInfo.left, scrollInfo.top);
+			}
 
 			new Notice('PDF processing complete'); // Show the final notice
 		} catch (error) {
@@ -324,6 +334,19 @@ class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.emptyLine)
 				.onChange(async (value) => {
 					this.plugin.settings.emptyLine = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Insertion Method setting
+		new Setting(containerEl)
+			.setName('Insertion Method')
+			.setDesc('Choose how images are inserted into the editor.')
+			.addDropdown(dropdown => dropdown
+				.addOption('Procedual', 'Procedual (inserts images one by one)')
+				.addOption('Batch', 'Batch (inserts all images at once)')
+				.setValue(this.plugin.settings.insertionMethod)
+				.onChange(async (value) => {
+					this.plugin.settings.insertionMethod = value;
 					await this.plugin.saveSettings();
 				}));
 
