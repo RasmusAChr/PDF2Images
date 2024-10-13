@@ -21,21 +21,21 @@ You can also choose to insert lines between the images for better organization a
 	Settings
 </h2>
 
-**Image Quality**
+### Image Quality
 Adjust the image quality to suit your needs. The default setting is 1x, but you can reduce it to as low as 0.5x for smaller file sizes and improved performance, or increase it up to 2x for the highest image clarity.
 
-**Image Insertion Method**
+### Image Insertion Method
 Choose between two different methods for inserting images:
 - Procedural: Images are generated and inserted one at a time.
 - Batch: All images are generated first, then inserted simultaneously for a more streamlined process.
 
-**Optional Line Between Images**
+### Optional Line Between Images
 You can toggle the option to include or exclude an empty line beneath each image. 
 
-**Enable ribbon icon**
+### Enable ribbon icon
 You have the option to add or remove a convenient icon in the toolbar for quick access to the conversion modal.
 
-**Attachment Folder Path**
+### Attachment Folder Path
 Specify the folder where images generated from the PDF will be saved. You can either manually enter the path or use the folder selection button to choose the destination.
 
 <h2 align="center">
