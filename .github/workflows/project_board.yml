@@ -7,8 +7,8 @@ jobs:
   move-assigned-card:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@v1.0.2
+      - uses: alex-page/github-project-automation-plus@7ffb872c64bd809d23563a130a0a97d01dfa8f43
         with:
           project-url: https://github.com/users/RasmusAChr/projects/1
           column: Todo
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
