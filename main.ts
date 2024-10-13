@@ -5,12 +5,14 @@ interface PluginSettings {
 	enableHeaders: boolean;
 	enableRibbonIcon: boolean;
 	attachmentFolderPath: string;
+	imageResolution: number;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	enableRibbonIcon: true,
-	attachmentFolderPath: ''
+	attachmentFolderPath: '',
+	imageResolution: 1,
 }
 
 export default class Pdf2Image extends Plugin {
@@ -131,7 +133,7 @@ export default class Pdf2Image extends Plugin {
 			// Loop through each page in the PDF
 			for (let i = 1; i <= totalPages; i++) {
 				const page = await pdf.getPage(i); // Get the page
-				const viewport = page.getViewport({ scale: 1.5 }); // Get the viewport (and choosing the scale)
+				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport (and choosing the scale)
 				const canvas = document.createElement('canvas'); // Create a canvas element
 				const context = canvas.getContext('2d'); // Get the canvas context
 
@@ -276,6 +278,21 @@ class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.enableHeaders)
 				.onChange(async (value) => {
 					this.plugin.settings.enableHeaders = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Image Resolution')
+			.setDesc('The resolution of the images to be generated. The default is 1x.')
+			.addDropdown(dropdown => dropdown
+				.addOption('0.5', '0.5x')
+				.addOption('0.75', '0.75x')
+				.addOption('1', '1x')
+				.addOption('1.5', '1.5x')
+				.addOption('2', '2x')
+				.setValue(this.plugin.settings.imageResolution.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.imageResolution = parseFloat(value);
 					await this.plugin.saveSettings();
 				}));
 
