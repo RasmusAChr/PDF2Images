@@ -11,4 +11,4 @@ jobs:
         with:
           project: ProjectBoard
           column: Todo
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
