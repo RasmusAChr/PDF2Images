@@ -29,6 +29,10 @@ Choose between two different methods for inserting images:
 - Procedural: Images are generated and inserted one at a time.
 - Batch: All images are generated first, then inserted simultaneously for a more streamlined process.
 
+### Insert headers (BETA)
+Toggle the option on to generate headers for each image based on pdf page analysis.
+This feature is in beta and might not work as expected with some pdf files. I am working on settings to control the how aggresive the header exctraction is.
+
 ### Optional Line Between Images
 You can toggle the option to include or exclude an empty line beneath each image. 
 
