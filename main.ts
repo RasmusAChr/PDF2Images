@@ -115,6 +115,17 @@ export default class Pdf2Image extends Plugin {
 		// Join the header lines to form the complete header
 		const header = headerLines.map((line: { text: any; }) => line.text).join(' ').trim();
 
+		// If no header is found, return an empty string
+		if (!header) {
+			return '';
+		}
+
+		// Check if the header is significantly larger than the average font size of the page
+		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
+		if (largestFontSize < averageFontSize * 1.2) {
+			return ''; // If the largest font size is not significantly larger, it's not a header
+		}
+
 		return header;
 	}
 
