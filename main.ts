@@ -6,6 +6,7 @@ interface PluginSettings {
 	enableRibbonIcon: boolean;
 	attachmentFolderPath: string;
 	imageResolution: number;
+	emptyLine: boolean;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
@@ -13,6 +14,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableRibbonIcon: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
+	emptyLine: true
 }
 
 export default class Pdf2Image extends Plugin {
@@ -80,8 +82,11 @@ export default class Pdf2Image extends Plugin {
 	// and do not reflect the real-time cursor position if the user continues typing.
 	private insertImageLink(editor: Editor, imageLink: string) {
 		const cursor = editor.getCursor(); // Get the current cursor position
-		editor.replaceRange(imageLink + '\n\n', cursor); // Add an extra newline after the image link
-		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length + 2)); // Adjust cursor position accordingly
+		editor.replaceRange(imageLink, cursor); // Insert the image link at the cursor position
+		if (this.settings.emptyLine) {
+			editor.replaceRange('\n\n', editor.getCursor()); // Add an extra newline after the image link
+		}
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length)); // Adjust cursor position accordingly
 	}
 
 	// Get the folder path where the attachments will be saved
@@ -281,9 +286,10 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Image Resolution setting
 		new Setting(containerEl)
 			.setName('Image Resolution')
-			.setDesc('The resolution of the images to be generated. The default is 1x.')
+			.setDesc('The resolution of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
 			.addDropdown(dropdown => dropdown
 				.addOption('0.5', '0.5x')
 				.addOption('0.75', '0.75x')
@@ -293,6 +299,17 @@ class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.imageResolution.toString())
 				.onChange(async (value) => {
 					this.plugin.settings.imageResolution = parseFloat(value);
+					await this.plugin.saveSettings();
+				}));
+
+		// Empty Line setting
+		new Setting(containerEl)
+			.setName('Empty Line after image')
+			.setDesc('Adds an empty line after each image.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.emptyLine)
+				.onChange(async (value) => {
+					this.plugin.settings.emptyLine = value;
 					await this.plugin.saveSettings();
 				}));
 
