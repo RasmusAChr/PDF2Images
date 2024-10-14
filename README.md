@@ -33,6 +33,12 @@ Choose between two different methods for inserting images:
 Toggle the option on to generate headers for each image based on pdf page analysis.
 This feature is in beta and might not work as expected with some pdf files. I am working on settings to control the how aggresive the header exctraction is.
 
+### Header size
+Choose the size of the header to be inserted above each image. You can select the following options: `h1`, `h2`, `h3`,`h4`,`h5`.
+
+### Header extraction sensitivity
+Adjust the sensitivity of the header extraction algorithm. Increase this value if headers are not being detected correctly. Lower the value if non-headers are mistakenly being detected as headers. The default is set to 1.2.
+
 ### Optional Line Between Images
 You can toggle the option to include or exclude an empty line beneath each image. 
 
