@@ -3,6 +3,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 interface PluginSettings {
 	enableHeaders: boolean;
+	headerSize: string;
 	enableRibbonButton: boolean;
 	attachmentFolderPath: string;
 	imageResolution: number;
@@ -12,6 +13,7 @@ interface PluginSettings {
 
 const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
+	headerSize: "#",
 	enableRibbonButton: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
@@ -207,7 +209,7 @@ export default class Pdf2Image extends Plugin {
 				if (this.settings.enableHeaders) {
 					header = await this.extractHeader(page); // Extract the header from the page if enabled
 				}
-				let imageLink = `${header ? `## ${header}\n` : ''}![${imageName}](${imagePath})`; // Create the image link with header if available
+				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${imagePath})`; // Create the image link with header if available
 				if (this.settings.emptyLine) {
 					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
 				}
@@ -362,7 +364,28 @@ class PluginSettingPage extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.enableHeaders = value;
 					await this.plugin.saveSettings();
+					this.display(); // Refresh the settings page to show/hide the header size setting
 				}));
+
+		// Header Size setting
+		if (this.plugin.settings.enableHeaders) {
+			new Setting(containerEl)
+				.setName('Header Size')
+				.setDesc('The size of the header to be inserted above the image.')
+				.addDropdown(dropdown => dropdown
+					.addOption('#', 'h1')
+					.addOption('##', 'h2')
+					.addOption('###', 'h3')
+					.addOption('####', 'h4')
+					.addOption('#####', 'h5')
+					.setValue(this.plugin.settings.headerSize)
+					.onChange(async (value) => {
+						this.plugin.settings.headerSize = value;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
+
 
 		// Empty Line setting
 		new Setting(containerEl)
