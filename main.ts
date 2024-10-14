@@ -4,6 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
+	headerExtractionSensitive: number;
 	enableRibbonButton: boolean;
 	attachmentFolderPath: string;
 	imageResolution: number;
@@ -14,6 +15,7 @@ interface PluginSettings {
 const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
+	headerExtractionSensitive: 1.2,
 	enableRibbonButton: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
@@ -124,7 +126,7 @@ export default class Pdf2Image extends Plugin {
 
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
-		if (largestFontSize < averageFontSize * 1.2) {
+		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
 			return ''; // If the largest font size is not significantly larger, it's not a header
 		}
 
@@ -367,8 +369,9 @@ class PluginSettingPage extends PluginSettingTab {
 					this.display(); // Refresh the settings page to show/hide the header size setting
 				}));
 
-		// Header Size setting
+		// Header advanced settings
 		if (this.plugin.settings.enableHeaders) {
+			// Header Size setting
 			new Setting(containerEl)
 				.setName('Header Size')
 				.setDesc('The size of the header to be inserted above the image.')
@@ -384,8 +387,22 @@ class PluginSettingPage extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 				);
-		}
 
+			// Header Extraction Sensitivity setting
+			new Setting(containerEl)
+				.setName('Header Extraction Sensitivity')
+				.setDesc('The sensitivity of the header extraction algorithm. Increase this value if headers are not being detected. Lower this value if non-headers are being detected as headers. The default is 1.2.')
+				.addSlider(slider => {
+					slider
+						.setLimits(0, 2, 0.1)
+						.setValue(this.plugin.settings.headerExtractionSensitive)
+						.setDynamicTooltip()
+						.onChange(async (value) => {
+							this.plugin.settings.headerExtractionSensitive = value;
+							await this.plugin.saveSettings();
+						});
+				});
+		}
 
 		// Empty Line setting
 		new Setting(containerEl)
