@@ -10,6 +10,8 @@ interface PluginSettings {
 	imageResolution: number;
 	emptyLine: boolean;
 	insertionMethod: string;
+	pdfWorker: string;
+	ispdfWorkerDownloaded: boolean;
 }
 
 const DEFAULT_SETTINGS: PluginSettings = {
@@ -20,7 +22,9 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	attachmentFolderPath: '',
 	imageResolution: 1,
 	emptyLine: true,
-	insertionMethod: 'Procedual'
+	insertionMethod: 'Procedual',
+	pdfWorker: "Online",
+	ispdfWorkerDownloaded: false
 }
 
 export default class Pdf2Image extends Plugin {
@@ -34,7 +38,13 @@ export default class Pdf2Image extends Plugin {
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
 		this.updateRibbon(); // Update the ribbon based on the setting
 
-		pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
+		// Load PDF.js worker based on the setting
+		if (this.settings.pdfWorker === 'Local' && this.settings.ispdfWorkerDownloaded) {
+			pdfjsLib.GlobalWorkerOptions.workerSrc = `${this.app.vault.adapter.getResourcePath('')}/.obsidian/plugins/PDF2Images/pdfworker/pdf.worker.min.js`;
+		} else {
+			pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER;
+		}
+		//pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
 
 		// Command to open the modal
 		this.addCommand({
@@ -460,6 +470,107 @@ class PluginSettingPage extends PluginSettingTab {
 
 				return textComponent;
 			});
+
+		// Use Online Worker setting
+		new Setting(containerEl)
+			.setName('PDF Worker')
+			.setDesc('Use an online worker for PDF processing (bad for slow networks). If disabled, a local worker will get downloaded and used.')
+			.addDropdown(dropdown => dropdown
+				.addOption('Online', 'Online (Uses an online worker)')
+				.addOption('Local', 'Local (Uses a local worker)')
+				.setValue(this.plugin.settings.pdfWorker)
+				.onChange(async (value) => {
+					this.plugin.settings.pdfWorker = value;
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
+		// Download PDF Worker button
+		if (this.plugin.settings.pdfWorker === 'Local' && !this.plugin.settings.ispdfWorkerDownloaded) {
+			new Setting(containerEl)
+				.setName('PDF Worker')
+				.setDesc('Download the PDF worker')
+				.addButton(button => button
+					.setButtonText('Download PDF Worker')
+					.onClick(async () => {
+						try {
+							const pdfWorkerUrl = this.plugin.PDFWORKER;
+							const response = await fetch(pdfWorkerUrl);
+							const arrayBuffer = await response.arrayBuffer();
+
+							// Convert ArrayBuffer to Uint8Array
+							const fileData = new Uint8Array(arrayBuffer);
+
+							// Define the path where you want to save the file
+							// This will save it in a folder called 'pdfworker' in your vault
+							const targetFolder = '.obsidian/plugins/PDF2Images/pdfworker';
+							const fileName = 'pdf.worker.min.js';
+
+							// Ensure the folder exists
+							if (!(await this.app.vault.adapter.exists(targetFolder))) {
+								await this.app.vault.adapter.mkdir(targetFolder);
+							}
+
+							// Save the file
+							await this.app.vault.adapter.writeBinary(
+								`${targetFolder}/${fileName}`,
+								fileData
+							);
+
+							this.plugin.settings.ispdfWorkerDownloaded = true;
+							await this.plugin.saveSettings();
+							this.display();
+
+							// Optionally show a notice
+							new Notice('PDF worker downloaded successfully');
+						} catch (error) {
+							console.error('Error downloading PDF worker:', error);
+							new Notice('Failed to download PDF worker');
+						}
+					}));
+		}
+
+		// Remove PDF Worker button
+		if (this.plugin.settings.pdfWorker === 'Local' && this.plugin.settings.ispdfWorkerDownloaded) {
+			new Setting(containerEl)
+				.setName('PDF Worker')
+				.setDesc('Remove the PDF worker')
+				.addButton(button => button
+					.setButtonText('Remove PDF Worker')
+					.onClick(async () => {
+						try {
+							// Define the path to the PDF worker file
+							const targetFolder = '.obsidian/plugins/PDF2Images/pdfworker';
+							const fileName = 'pdf.worker.min.js';
+							const filePath = `${targetFolder}/${fileName}`;
+
+							// Check if file exists
+							if (await this.app.vault.adapter.exists(filePath)) {
+								// Delete the file
+								await this.app.vault.adapter.remove(filePath);
+
+								// Optionally remove the folder if it's empty
+								const folderContents = await this.app.vault.adapter.list(targetFolder);
+								if (folderContents.files.length === 0 && folderContents.folders.length === 0) {
+									await this.app.vault.adapter.rmdir(targetFolder, true);
+								}
+
+								// Update settings
+								this.plugin.settings.ispdfWorkerDownloaded = false;
+								await this.plugin.saveSettings();
+								this.display();
+
+								new Notice('PDF worker removed successfully');
+							} else {
+								new Notice('PDF worker file not found');
+							}
+						} catch (error) {
+							console.error('Error removing PDF worker:', error);
+							new Notice('Failed to remove PDF worker');
+						}
+					}));
+		}
+
 	}
 }
 
