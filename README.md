@@ -2,9 +2,9 @@
 	PDF 2 Images
 </h1>
 
-This plugin allows you to easily convert PDF documents into images and insert them directly into your notes in Obsidian. It's ideal for taking notes from lecture slideshows, helping to capture important visual information from slides.
+This plugin allows you to easily convert PDF documents into images and insert them directly into your notes in Obsidian. It's ideal for taking notes from lecture slideshows, helping to capture important visual information from the slides.
 
-You can also choose to insert lines between the images for better organization and clarity, making your notes easier to read and structure. Perfect for students or anyone working with visual content in their notes.
+You can also choose to insert lines between the images for better organization and clarity, making your notes easier to read and structure. Great for students or anyone in general working with visual content in their notes.
 
 <h2 align="center">
 	How to use
@@ -12,8 +12,8 @@ You can also choose to insert lines between the images for better organization a
 
 1. Activate the plugin from the Community Plugins page.
 2. You can either
- 	- Open command palette and type `Convert PDF to Images`.
-	- Use the ribbon in the left ribbon menu (if activated in plugin settings).
+ 	- Open command palette and type `Convert pdf to images`.
+	- Use the ribbon in the left ribbon menu.
 4. Select your PDF file and click convert.
 5. The images will be inserted into your note.
 
@@ -42,11 +42,6 @@ Adjust the sensitivity of the header extraction algorithm. Increase this value i
 ### Optional Line Between Images
 You can toggle the option to include or exclude an empty line beneath each image. 
 
-### Enable ribbon icon
-You have the option to add or remove a convenient icon in the toolbar for quick access to the conversion modal.
-
-### Attachment Folder Path
-Specify the folder where images generated from the PDF will be saved. You can either manually enter the path or use the folder selection button to choose the destination.
 
 <h2 align="center">
 	Support
