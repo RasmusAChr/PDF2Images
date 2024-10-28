@@ -4,7 +4,6 @@ interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
-	attachmentFolderPath: string;
 	imageResolution: number;
 	emptyLine: boolean;
 	insertionMethod: string;
@@ -14,7 +13,6 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
-	attachmentFolderPath: '',
 	imageResolution: 1,
 	emptyLine: true,
 	insertionMethod: 'Procedual'
@@ -405,88 +403,5 @@ class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.emptyLine = value;
 					await this.plugin.saveSettings();
 				}));
-
-		// Attachment Folder Path setting
-		new Setting(containerEl)
-			.setName('Attachment folder path')
-			.setDesc('Specify the folder path where attachments will be saved.')
-			.addText(text => {
-				let textComponent = text
-					.setPlaceholder('Enter folder path')
-					.setValue(this.plugin.settings.attachmentFolderPath)
-					.onChange(async (value) => {
-						this.plugin.settings.attachmentFolderPath = value;
-						await this.plugin.saveSettings();
-					});
-
-				// Add a button to open the folder selection modal
-				const btn = createEl("button", {
-					cls: "clickable-icon",
-					attr: { type: "button", "aria-label": "Select folder" }
-				});
-				setIcon(btn, "folder");
-
-				// Insert the button after the input element
-				textComponent.inputEl.after(btn);
-
-				btn.addEventListener("click", (e) => {
-					e.preventDefault();
-					new FolderSuggestModal(this.app, (folder) => {
-						textComponent.setValue(folder.path);
-						this.plugin.settings.attachmentFolderPath = folder.path;
-						this.plugin.saveSettings();
-					}).open();
-				});
-
-				return textComponent;
-			});
-	}
-}
-
-
-/**
- * A modal that provides a fuzzy search interface for selecting folders within the vault.
- * Extends the `FuzzySuggestModal` class to offer folder suggestions.
- *
- * @template TFolder - The type representing a folder.
- */
-class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
-	/**
-	 * Creates an instance of FolderSuggestModal.
-	 *
-	 * @param {App} app - The application instance.
-	 * @param {(folder: TFolder) => void} onChoose - A callback function to be called when a folder is chosen.
-	 */
-	constructor(app: App, private onChoose: (folder: TFolder) => void) {
-		super(app);
-	}
-
-	/**
-	 * Retrieves all folders from the vault.
-	 *
-	 * @returns {TFolder[]} An array of folders.
-	 */
-	getItems(): TFolder[] {
-		return this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
-	}
-
-	/**
-	 * Gets the display text for a folder.
-	 *
-	 * @param {TFolder} folder - The folder to get the text for.
-	 * @returns {string} The path of the folder.
-	 */
-	getItemText(folder: TFolder): string {
-		return folder.path;
-	}
-
-	/**
-	 * Handles the event when a folder is chosen.
-	 *
-	 * @param {TFolder} folder - The chosen folder.
-	 * @param {MouseEvent | KeyboardEvent} evt - The event that triggered the choice.
-	 */
-	onChooseItem(folder: TFolder, evt: MouseEvent | KeyboardEvent): void {
-		this.onChoose(folder);
 	}
 }
