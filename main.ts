@@ -5,6 +5,7 @@ interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
+	enableRibbonButton: boolean;
 	attachmentFolderPath: string;
 	imageResolution: number;
 	emptyLine: boolean;
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
+	enableRibbonButton: true,
 	attachmentFolderPath: '',
 	imageResolution: 1,
 	emptyLine: true,
@@ -30,6 +32,7 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
+		this.updateRibbon(); // Update the ribbon based on the setting
 
 		pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
 
@@ -51,6 +54,7 @@ export default class Pdf2Image extends Plugin {
 	// Save settings to the data file
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.updateRibbon();
 	}
 
 	// Open the modal to convert PDF to images
@@ -60,6 +64,22 @@ export default class Pdf2Image extends Plugin {
 			new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
 		} else {
 			new Notice('Please open a note to insert images');
+		}
+	}
+
+	// Add a ribbon button to the toolbar if the setting is enabled
+	private updateRibbon() {
+		if (this.settings.enableRibbonButton) {
+			if (!this.ribbonEl) {
+				this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
+					this.openPDFToImageModal()
+				});
+			}
+		} else {
+			if (this.ribbonEl) {
+				this.ribbonEl.remove();
+				this.ribbonEl = null;
+			}
 		}
 	}
 
@@ -392,6 +412,17 @@ class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.emptyLine)
 				.onChange(async (value) => {
 					this.plugin.settings.emptyLine = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Enable Ribbon button setting
+		new Setting(containerEl)
+			.setName('Ribbon button')
+			.setDesc('Adds a ribbon button to the toolbar to open the conversion modal.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableRibbonButton)
+				.onChange(async (value) => {
+					this.plugin.settings.enableRibbonButton = value;
 					await this.plugin.saveSettings();
 				}));
 
