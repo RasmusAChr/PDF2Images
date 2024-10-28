@@ -88,10 +88,9 @@ export default class Pdf2Image extends Plugin {
 
 	// Get the folder path where the attachments will be saved
 	// Note: If the folder path is not set, use the current note's folder
-	private getAttachmentFolderPath(): string {
-		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
-		//console.log(basePath.replace('{{date}}', moment().format('YYYY-MM-DD')))
-		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
+	private async getAttachmentFolderPath(): Promise<string> {
+		const basePath = this.fileManager.getAvailablePathForAttachment('');
+		return basePath;
 	}
 
 	private async extractHeader(page: any): Promise<string> {
@@ -153,12 +152,12 @@ export default class Pdf2Image extends Plugin {
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
-			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
+			let folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
 
 			let folderIndex = 0; // Initialize folder index
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
+				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
