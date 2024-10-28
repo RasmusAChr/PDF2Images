@@ -38,7 +38,7 @@ export default class Pdf2Image extends Plugin {
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
 			name: 'Convert pdf to images',
-			callback: () => {
+			checkCallback: () => {
 				this.openPDFToImageModal()
 			}
 		});
