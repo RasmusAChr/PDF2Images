@@ -29,7 +29,7 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
+		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert pdf to images', () => {
 			this.openPDFToImageModal()
 		});
 
@@ -38,7 +38,7 @@ export default class Pdf2Image extends Plugin {
 		// Command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
-			name: 'Convert PDF to Images',
+			name: 'Convert pdf to images',
 			callback: () => {
 				this.openPDFToImageModal()
 			}
@@ -312,7 +312,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Image Quality setting
 		new Setting(containerEl)
-			.setName('Image Quality')
+			.setName('Image quality')
 			.setDesc('The quality of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
 			.addDropdown(dropdown => dropdown
 				.addOption('0.5', '0.5x')
@@ -328,7 +328,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Insertion Method setting
 		new Setting(containerEl)
-			.setName('Image Insertion Method')
+			.setName('Image insertion method')
 			.setDesc('Choose how images are inserted into the editor.')
 			.addDropdown(dropdown => dropdown
 				.addOption('Procedual', 'Procedual (inserts images one by one)')
@@ -355,7 +355,7 @@ class PluginSettingPage extends PluginSettingTab {
 		if (this.plugin.settings.enableHeaders) {
 			// Header Size setting
 			new Setting(containerEl)
-				.setName('Header Size')
+				.setName('Header size')
 				.setDesc('The size of the header to be inserted above the image.')
 				.addDropdown(dropdown => dropdown
 					.addOption('#', 'h1')
@@ -372,7 +372,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 			// Header Extraction Sensitivity setting
 			new Setting(containerEl)
-				.setName('Header Extraction Sensitivity')
+				.setName('Header extraction sensitivity')
 				.setDesc('The sensitivity of the header extraction algorithm. Increase this value if headers are not being detected. Lower this value if non-headers are being detected as headers. The default is 1.2.')
 				.addSlider(slider => {
 					slider
@@ -388,7 +388,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Empty Line setting
 		new Setting(containerEl)
-			.setName('Empty Line after image')
+			.setName('Empty line after image')
 			.setDesc('Adds an empty line after each image.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.emptyLine)
@@ -399,7 +399,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Attachment Folder Path setting
 		new Setting(containerEl)
-			.setName('Attachment Folder Path')
+			.setName('Attachment folder path')
 			.setDesc('Specify the folder path where attachments will be saved.')
 			.addText(text => {
 				let textComponent = text
