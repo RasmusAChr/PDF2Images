@@ -39,8 +39,8 @@ export default class Pdf2Image extends Plugin {
 		// Command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
-			name: 'Convert pdf to images',
-			checkCallback: () => {
+			name: 'Convert PDF to Images',
+			callback: () => {
 				this.openPDFToImageModal()
 			}
 		});
@@ -330,7 +330,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Image Quality setting
 		new Setting(containerEl)
-			.setName('Image quality')
+			.setName('Image Quality')
 			.setDesc('The quality of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
 			.addDropdown(dropdown => dropdown
 				.addOption('0.5', '0.5x')
@@ -346,7 +346,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Insertion Method setting
 		new Setting(containerEl)
-			.setName('Image insertion method')
+			.setName('Image Insertion Method')
 			.setDesc('Choose how images are inserted into the editor.')
 			.addDropdown(dropdown => dropdown
 				.addOption('Procedual', 'Procedual (inserts images one by one)')
@@ -373,7 +373,7 @@ class PluginSettingPage extends PluginSettingTab {
 		if (this.plugin.settings.enableHeaders) {
 			// Header Size setting
 			new Setting(containerEl)
-				.setName('Header size')
+				.setName('Header Size')
 				.setDesc('The size of the header to be inserted above the image.')
 				.addDropdown(dropdown => dropdown
 					.addOption('#', 'h1')
@@ -390,7 +390,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 			// Header Extraction Sensitivity setting
 			new Setting(containerEl)
-				.setName('Header extraction sensitivity')
+				.setName('Header Extraction Sensitivity')
 				.setDesc('The sensitivity of the header extraction algorithm. Increase this value if headers are not being detected. Lower this value if non-headers are being detected as headers. The default is 1.2.')
 				.addSlider(slider => {
 					slider
@@ -406,7 +406,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Empty Line setting
 		new Setting(containerEl)
-			.setName('Empty line after image')
+			.setName('Empty Line after image')
 			.setDesc('Adds an empty line after each image.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.emptyLine)
@@ -428,7 +428,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Attachment Folder Path setting
 		new Setting(containerEl)
-			.setName('Attachment folder path')
+			.setName('Attachment Folder Path')
 			.setDesc('Specify the folder path where attachments will be saved.')
 			.addText(text => {
 				let textComponent = text
