@@ -193,7 +193,7 @@ export default class Pdf2Image extends Plugin {
 				if (this.settings.enableHeaders) {
 					header = await this.extractHeader(page); // Extract the header from the page if enabled
 				}
-				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
+				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${imagePath})`; // Create the image link with header if available
 				if (this.settings.emptyLine) {
 					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
 				}
