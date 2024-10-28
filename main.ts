@@ -1,5 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder } from 'obsidian';
-import * as pdfjsLib from 'pdfjs-dist';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder, loadPdfJs } from 'obsidian';
 
 interface PluginSettings {
 	enableHeaders: boolean;
@@ -26,7 +25,8 @@ const DEFAULT_SETTINGS: PluginSettings = {
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
 	private ribbonEl: HTMLElement | null = null;
-	PDFWORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+
+	pdfjsLib: any;
 
 	// When plugin loads
 	async onload() {
@@ -34,7 +34,7 @@ export default class Pdf2Image extends Plugin {
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
 		this.updateRibbon(); // Update the ribbon based on the setting
 
-		pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
+		this.pdfjsLib = await loadPdfJs();
 
 		// Command to open the modal
 		this.addCommand({
@@ -155,7 +155,7 @@ export default class Pdf2Image extends Plugin {
 		try {
 			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
 			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
-			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
+			const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
 			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
 
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
