@@ -1,12 +1,9 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder } from 'obsidian';
-import * as pdfjsLib from 'pdfjs-dist';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder, loadPdfJs, FileManager } from 'obsidian';
 
 interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
-	enableRibbonButton: boolean;
-	attachmentFolderPath: string;
 	imageResolution: number;
 	emptyLine: boolean;
 	insertionMethod: string;
@@ -16,8 +13,6 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
-	enableRibbonButton: true,
-	attachmentFolderPath: '',
 	imageResolution: 1,
 	emptyLine: true,
 	insertionMethod: 'Procedual'
@@ -26,22 +21,33 @@ const DEFAULT_SETTINGS: PluginSettings = {
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
 	private ribbonEl: HTMLElement | null = null;
-	PDFWORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js';
+	pdfjsLib: any;
+	fileManager: FileManager;
 
 	// When plugin loads
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.updateRibbon(); // Update the ribbon based on the setting
+		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert pdf to images', () => {
+			this.openPDFToImageModal()
+		});
 
-		pdfjsLib.GlobalWorkerOptions.workerSrc = this.PDFWORKER; // Load the PDF.js worker
+		this.pdfjsLib = await loadPdfJs();
+		this.fileManager = this.app.fileManager;
 
-		// Command to open the modal
+		// Conditional command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
-			name: 'Convert PDF to Images',
-			callback: () => {
-				this.openPDFToImageModal()
+			name: 'Convert pdf to images',
+			checkCallback: (checking: boolean) => {
+				const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeLeaf) {
+					if (!checking) {
+						this.openPDFToImageModal();
+					}
+					return true;
+				}
+				return false;
 			}
 		});
 	}
@@ -54,7 +60,6 @@ export default class Pdf2Image extends Plugin {
 	// Save settings to the data file
 	async saveSettings() {
 		await this.saveData(this.settings);
-		this.updateRibbon();
 	}
 
 	// Open the modal to convert PDF to images
@@ -64,22 +69,6 @@ export default class Pdf2Image extends Plugin {
 			new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
 		} else {
 			new Notice('Please open a note to insert images');
-		}
-	}
-
-	// Add a ribbon button to the toolbar if the setting is enabled
-	private updateRibbon() {
-		if (this.settings.enableRibbonButton) {
-			if (!this.ribbonEl) {
-				this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to Images', () => {
-					this.openPDFToImageModal()
-				});
-			}
-		} else {
-			if (this.ribbonEl) {
-				this.ribbonEl.remove();
-				this.ribbonEl = null;
-			}
 		}
 	}
 
@@ -97,9 +86,9 @@ export default class Pdf2Image extends Plugin {
 
 	// Get the folder path where the attachments will be saved
 	// Note: If the folder path is not set, use the current note's folder
-	private getAttachmentFolderPath(): string {
-		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
-		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
+	private async getAttachmentFolderPath(): Promise<string> {
+		const basePath = this.fileManager.getAvailablePathForAttachment('');
+		return basePath;
 	}
 
 	private async extractHeader(page: any): Promise<string> {
@@ -155,18 +144,18 @@ export default class Pdf2Image extends Plugin {
 		try {
 			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
 			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
-			const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
+			const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
 			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
 
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
-			let folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
+			let folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
 
 			let folderIndex = 0; // Initialize folder index
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
+				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
@@ -330,7 +319,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Image Quality setting
 		new Setting(containerEl)
-			.setName('Image Quality')
+			.setName('Image quality')
 			.setDesc('The quality of the images to be generated. Lower = faster and smaller file size, higher = slower and bigger file size. The default is 1x.')
 			.addDropdown(dropdown => dropdown
 				.addOption('0.5', '0.5x')
@@ -346,7 +335,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Insertion Method setting
 		new Setting(containerEl)
-			.setName('Image Insertion Method')
+			.setName('Image insertion method')
 			.setDesc('Choose how images are inserted into the editor.')
 			.addDropdown(dropdown => dropdown
 				.addOption('Procedual', 'Procedual (inserts images one by one)')
@@ -373,7 +362,7 @@ class PluginSettingPage extends PluginSettingTab {
 		if (this.plugin.settings.enableHeaders) {
 			// Header Size setting
 			new Setting(containerEl)
-				.setName('Header Size')
+				.setName('Header size')
 				.setDesc('The size of the header to be inserted above the image.')
 				.addDropdown(dropdown => dropdown
 					.addOption('#', 'h1')
@@ -390,7 +379,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 			// Header Extraction Sensitivity setting
 			new Setting(containerEl)
-				.setName('Header Extraction Sensitivity')
+				.setName('Header extraction sensitivity')
 				.setDesc('The sensitivity of the header extraction algorithm. Increase this value if headers are not being detected. Lower this value if non-headers are being detected as headers. The default is 1.2.')
 				.addSlider(slider => {
 					slider
@@ -406,7 +395,7 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Empty Line setting
 		new Setting(containerEl)
-			.setName('Empty Line after image')
+			.setName('Empty line after image')
 			.setDesc('Adds an empty line after each image.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.emptyLine)
@@ -414,99 +403,5 @@ class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.emptyLine = value;
 					await this.plugin.saveSettings();
 				}));
-
-		// Enable Ribbon button setting
-		new Setting(containerEl)
-			.setName('Ribbon button')
-			.setDesc('Adds a ribbon button to the toolbar to open the conversion modal.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.enableRibbonButton)
-				.onChange(async (value) => {
-					this.plugin.settings.enableRibbonButton = value;
-					await this.plugin.saveSettings();
-				}));
-
-		// Attachment Folder Path setting
-		new Setting(containerEl)
-			.setName('Attachment Folder Path')
-			.setDesc('Specify the folder path where attachments will be saved.')
-			.addText(text => {
-				let textComponent = text
-					.setPlaceholder('Enter folder path')
-					.setValue(this.plugin.settings.attachmentFolderPath)
-					.onChange(async (value) => {
-						this.plugin.settings.attachmentFolderPath = value;
-						await this.plugin.saveSettings();
-					});
-
-				// Add a button to open the folder selection modal
-				const btn = createEl("button", {
-					cls: "clickable-icon",
-					attr: { type: "button", "aria-label": "Select folder" }
-				});
-				setIcon(btn, "folder");
-
-				// Insert the button after the input element
-				textComponent.inputEl.after(btn);
-
-				btn.addEventListener("click", (e) => {
-					e.preventDefault();
-					new FolderSuggestModal(this.app, (folder) => {
-						textComponent.setValue(folder.path);
-						this.plugin.settings.attachmentFolderPath = folder.path;
-						this.plugin.saveSettings();
-					}).open();
-				});
-
-				return textComponent;
-			});
-	}
-}
-
-
-/**
- * A modal that provides a fuzzy search interface for selecting folders within the vault.
- * Extends the `FuzzySuggestModal` class to offer folder suggestions.
- *
- * @template TFolder - The type representing a folder.
- */
-class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
-	/**
-	 * Creates an instance of FolderSuggestModal.
-	 *
-	 * @param {App} app - The application instance.
-	 * @param {(folder: TFolder) => void} onChoose - A callback function to be called when a folder is chosen.
-	 */
-	constructor(app: App, private onChoose: (folder: TFolder) => void) {
-		super(app);
-	}
-
-	/**
-	 * Retrieves all folders from the vault.
-	 *
-	 * @returns {TFolder[]} An array of folders.
-	 */
-	getItems(): TFolder[] {
-		return this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
-	}
-
-	/**
-	 * Gets the display text for a folder.
-	 *
-	 * @param {TFolder} folder - The folder to get the text for.
-	 * @returns {string} The path of the folder.
-	 */
-	getItemText(folder: TFolder): string {
-		return folder.path;
-	}
-
-	/**
-	 * Handles the event when a folder is chosen.
-	 *
-	 * @param {TFolder} folder - The chosen folder.
-	 * @param {MouseEvent | KeyboardEvent} evt - The event that triggered the choice.
-	 */
-	onChooseItem(folder: TFolder, evt: MouseEvent | KeyboardEvent): void {
-		this.onChoose(folder);
 	}
 }
