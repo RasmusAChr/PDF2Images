@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder, loadPdfJs } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, TFile, normalizePath, moment, PluginSettingTab, Setting, setIcon, FuzzySuggestModal, TFolder, loadPdfJs, FileManager } from 'obsidian';
 
 interface PluginSettings {
 	enableHeaders: boolean;
@@ -24,6 +24,7 @@ export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
 	private ribbonEl: HTMLElement | null = null;
 	pdfjsLib: any;
+	fileManager: FileManager;
 
 	// When plugin loads
 	async onload() {
@@ -34,13 +35,21 @@ export default class Pdf2Image extends Plugin {
 		});
 
 		this.pdfjsLib = await loadPdfJs();
+		this.fileManager = this.app.fileManager;
 
-		// Command to open the modal
+		// Conditional command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
 			name: 'Convert pdf to images',
-			checkCallback: () => {
-				this.openPDFToImageModal()
+			checkCallback: (checking: boolean) => {
+				const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeLeaf) {
+					if (!checking) {
+						this.openPDFToImageModal();
+					}
+					return true;
+				}
+				return false;
 			}
 		});
 	}
@@ -81,6 +90,7 @@ export default class Pdf2Image extends Plugin {
 	// Note: If the folder path is not set, use the current note's folder
 	private getAttachmentFolderPath(): string {
 		const basePath = this.settings.attachmentFolderPath || this.app.fileManager.getNewFileParent('').path || '';
+		//console.log(basePath.replace('{{date}}', moment().format('YYYY-MM-DD')))
 		return basePath.replace('{{date}}', moment().format('YYYY-MM-DD'));
 	}
 
