@@ -28,7 +28,7 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert pdf to images', () => {
+		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
 			this.openPDFToImageModal()
 		});
 
@@ -38,7 +38,7 @@ export default class Pdf2Image extends Plugin {
 		// Conditional command to open the modal
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
-			name: 'Convert pdf to images',
+			name: 'Convert PDF to images',
 			checkCallback: (checking: boolean) => {
 				const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
 				if (activeLeaf) {
