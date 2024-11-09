@@ -3,7 +3,7 @@
 Convert PDF pages into images and insert them directly into your Obsidian notes, ideal for capturing key visuals like lecture slides. Optionally, add separator lines between images for organized and readable notes.
 
 ## Demo
-![demo](https://raw.githubusercontent.com/rasmusachr/pdf2images/main/resources/demo.gif)
+![demo](https://github.com/RasmusAChr/PDF2Images/blob/master/resources/demo.gif?raw=true)
 
 ## How to use
 
