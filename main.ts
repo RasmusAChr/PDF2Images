@@ -113,6 +113,12 @@ export default class Pdf2Image extends Plugin {
 			return '';
 		}
 
+		// Check if the header is the only text on the page
+		const nonEmptyLines = lines.filter((line: { text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.text.trim().length > 0);
+		if (nonEmptyLines.length === headerLines.length) {
+			return header; // If the header is the only text on the page, return it
+		}
+
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
