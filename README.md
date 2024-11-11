@@ -1,6 +1,6 @@
 # PDF 2 Images
 
-Convert PDF pages into images and insert them directly into your Obsidian notes, ideal for capturing key visuals like lecture slides. Optionally, add separator lines between images for organized and readable notes.
+Convert PDF pages into images and insert them directly into your Obsidian notes. Optionally, extract headers from each page and add or empty lines below each image for quick and easy-to-annotate notes.
 
 ## Demo
 ![demo](https://github.com/RasmusAChr/PDF2Images/blob/master/resources/demo.gif?raw=true)
