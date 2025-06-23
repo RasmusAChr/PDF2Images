@@ -165,10 +165,13 @@ export default class Pdf2Image extends Plugin {
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
 			let folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
 
+			// Remove hashtag from folder name if present
+			let cleanPdfName = pdfName.replace(/#/g, '');
 			let folderIndex = 0; // Initialize folder index
+			folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}`); // Use cleaned name
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
+				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
