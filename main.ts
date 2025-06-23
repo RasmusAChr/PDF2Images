@@ -5,7 +5,7 @@ interface PluginSettings {
 	headerSize: string;
 	headerExtractionSensitive: number;
 	imageResolution: number;
-	emptyLine: boolean;
+	afterImage: number;
 	insertionMethod: string;
 }
 
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
 	imageResolution: 1,
-	emptyLine: true,
+	afterImage: 0,
 	insertionMethod: 'Procedual'
 }
 
@@ -77,11 +77,24 @@ export default class Pdf2Image extends Plugin {
 	// and do not reflect the real-time cursor position if the user continues typing.
 	private insertImageLink(editor: Editor, imageLink: string) {
 		const cursor = editor.getCursor(); // Get the current cursor position
-		editor.replaceRange(imageLink, cursor); // Insert the image link at the cursor position
-		if (this.settings.emptyLine) {
-			editor.replaceRange('\n\n', editor.getCursor()); // Add an extra newline after the image link
+		let totalInsertedText = imageLink;
+		
+		// Build the complete text to insert based on settings
+		if (this.settings.afterImage === 0) {
+			totalInsertedText += '\n';
+		} else if (this.settings.afterImage === 1) {
+			totalInsertedText += '\n';
+		} else if (this.settings.afterImage === 2) {
+			totalInsertedText += '***\n';
+		} else if (this.settings.afterImage === 3) {
+			totalInsertedText += '\n***\n';
 		}
-		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length)); // Adjust cursor position accordingly
+		
+		// Insert the complete text at once
+		editor.replaceRange(totalInsertedText, cursor);
+		
+		// Set cursor position to the end of the inserted text
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + totalInsertedText.length));
 	}
 
 	// Get the folder path where the attachments will be saved
@@ -201,7 +214,7 @@ export default class Pdf2Image extends Plugin {
 					header = await this.extractHeader(page); // Extract the header from the page if enabled
 				}
 				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
-				if (this.settings.emptyLine) {
+				if (this.settings.afterImage) {
 					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
 				}
 				imageLinks.push(imageLink); // Add the image link to the array
@@ -348,12 +361,16 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Empty Line setting
 		new Setting(containerEl)
-			.setName('Empty line after image')
-			.setDesc('Adds an empty line after each image.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.emptyLine)
+			.setName('Image separator')
+			.setDesc('Choose what to insert after each image.')
+			.addDropdown(dropdown => dropdown
+				.addOption('0', 'None')
+				.addOption('1', 'Empty line')
+				.addOption('2', 'Separator line')
+				.addOption('3', 'Empty line + separator line')
+				.setValue(this.plugin.settings.afterImage.toString())
 				.onChange(async (value) => {
-					this.plugin.settings.emptyLine = value;
+					this.plugin.settings.afterImage = parseInt(value, 10);
 					await this.plugin.saveSettings();
 				}));
 
