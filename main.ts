@@ -4,6 +4,7 @@ interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
+	removeHeaderDuplicates: boolean;
 	imageResolution: number;
 	afterImage: number;
 	insertionMethod: string;
@@ -13,6 +14,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
+	removeHeaderDuplicates: false,
 	imageResolution: 1,
 	afterImage: 0,
 	insertionMethod: 'Procedual'
@@ -104,6 +106,8 @@ export default class Pdf2Image extends Plugin {
 		return basePath;
 	}
 
+	private lastExtractedHeader: string | null = null;
+
 	private async extractHeader(page: any): Promise<string> {
 		const textContent = await page.getTextContent();
 		const lines = textContent.items.map((item: any) => ({
@@ -123,13 +127,23 @@ export default class Pdf2Image extends Plugin {
 
 		// If no header is found, return an empty string
 		if (!header) {
+			this.lastExtractedHeader = '';
 			return '';
 		}
 
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
-			return ''; // If the largest font size is not significantly larger, it's not a header
+			this.lastExtractedHeader = '';
+			return '';
+		}
+
+		// Remove duplicate headers if the setting is enabled
+		if (this.settings.removeHeaderDuplicates) {
+			if (header === this.lastExtractedHeader) {
+				return '';
+			}
+			this.lastExtractedHeader = header;
 		}
 
 		return header;
@@ -391,6 +405,18 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Header advanced settings
 		if (this.plugin.settings.enableHeaders) {
+			// Remove Header Duplicates setting
+			new Setting(containerEl)
+			.setName('Remove header duplicates')
+			.setDesc('Removes duplicate headers from the image. This is useful if the same header appears on multiple pages.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.removeHeaderDuplicates)
+				.onChange(async (value) => {
+					this.plugin.settings.removeHeaderDuplicates = value;
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
 			// Header Size setting
 			new Setting(containerEl)
 				.setName('Header size')
