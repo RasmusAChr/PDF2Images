@@ -346,6 +346,17 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Empty Line setting
+		new Setting(containerEl)
+			.setName('Empty line after image')
+			.setDesc('Adds an empty line after each image.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.emptyLine)
+				.onChange(async (value) => {
+					this.plugin.settings.emptyLine = value;
+					await this.plugin.saveSettings();
+				}));
+
 		// Enable Headers setting
 		new Setting(containerEl)
 			.setName('Insert headers (BETA)')
@@ -392,16 +403,5 @@ class PluginSettingPage extends PluginSettingTab {
 						});
 				});
 		}
-
-		// Empty Line setting
-		new Setting(containerEl)
-			.setName('Empty line after image')
-			.setDesc('Adds an empty line after each image.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.emptyLine)
-				.onChange(async (value) => {
-					this.plugin.settings.emptyLine = value;
-					await this.plugin.saveSettings();
-				}));
 	}
 }
