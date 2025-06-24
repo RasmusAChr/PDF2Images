@@ -21,9 +21,11 @@ Convert PDF pages into images and insert them directly into your Obsidian notes.
     - Procedural: Images are generated and inserted one at a time.
     - Batch: All images are generated first, then inserted simultaneously for a more streamlined process.
 
-- **Optional Line Between Images**: You can toggle the option to include or exclude an empty line beneath each image. 
+- **Image seperator**: You can customize how images are separated: choose an empty line, a separator line, or no separation at all.
 
 - **Insert headers**: Toggle the option on to generate headers for each image based on pdf page analysis. This feature is in early development, so its effectiveness may vary depending on the PDF layout. I’m actively working to improve the algorithm to better detect different header types.
+
+- **Remove header duplicates**: Prevent identical headers from being inserted multiple times if consecutive PDF pages have the same detected header.
 
 - **Header size**: Choose the size of the header to be inserted above each image. You can select the following options: `h1`, `h2`, `h3`,`h4`,`h5`.
 
