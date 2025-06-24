@@ -4,8 +4,9 @@ interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
+	removeHeaderDuplicates: boolean;
 	imageResolution: number;
-	emptyLine: boolean;
+	afterImage: number;
 	insertionMethod: string;
 }
 
@@ -13,8 +14,9 @@ const DEFAULT_SETTINGS: PluginSettings = {
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
+	removeHeaderDuplicates: false,
 	imageResolution: 1,
-	emptyLine: true,
+	afterImage: 0,
 	insertionMethod: 'Procedual'
 }
 
@@ -66,7 +68,11 @@ export default class Pdf2Image extends Plugin {
 	private openPDFToImageModal() {
 		const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (activeLeaf) {
-			new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
+			new PdfToImageModal(
+				this.app, 
+				this.handlePdf.bind(this, activeLeaf.editor), 
+				this.settings.imageResolution
+			).open();
 		} else {
 			new Notice('Please open a note to insert images');
 		}
@@ -77,11 +83,24 @@ export default class Pdf2Image extends Plugin {
 	// and do not reflect the real-time cursor position if the user continues typing.
 	private insertImageLink(editor: Editor, imageLink: string) {
 		const cursor = editor.getCursor(); // Get the current cursor position
-		editor.replaceRange(imageLink, cursor); // Insert the image link at the cursor position
-		if (this.settings.emptyLine) {
-			editor.replaceRange('\n\n', editor.getCursor()); // Add an extra newline after the image link
+		let totalInsertedText = imageLink;
+		
+		// Build the complete text to insert based on settings
+		if (this.settings.afterImage === 0) {
+			totalInsertedText += '\n';
+		} else if (this.settings.afterImage === 1) {
+			totalInsertedText += '\n';
+		} else if (this.settings.afterImage === 2) {
+			totalInsertedText += '***\n';
+		} else if (this.settings.afterImage === 3) {
+			totalInsertedText += '\n***\n';
 		}
-		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + imageLink.length)); // Adjust cursor position accordingly
+		
+		// Insert the complete text at once
+		editor.replaceRange(totalInsertedText, cursor);
+		
+		// Set cursor position to the end of the inserted text
+		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + totalInsertedText.length));
 	}
 
 	// Get the folder path where the attachments will be saved
@@ -90,6 +109,8 @@ export default class Pdf2Image extends Plugin {
 		const basePath = this.fileManager.getAvailablePathForAttachment('');
 		return basePath;
 	}
+
+	private lastExtractedHeader: string | null = null;
 
 	private async extractHeader(page: any): Promise<string> {
 		const textContent = await page.getTextContent();
@@ -110,13 +131,23 @@ export default class Pdf2Image extends Plugin {
 
 		// If no header is found, return an empty string
 		if (!header) {
+			this.lastExtractedHeader = '';
 			return '';
 		}
 
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
-			return ''; // If the largest font size is not significantly larger, it's not a header
+			this.lastExtractedHeader = '';
+			return '';
+		}
+
+		// Remove duplicate headers if the setting is enabled
+		if (this.settings.removeHeaderDuplicates) {
+			if (header === this.lastExtractedHeader) {
+				return '';
+			}
+			this.lastExtractedHeader = header;
 		}
 
 		return header;
@@ -127,19 +158,22 @@ export default class Pdf2Image extends Plugin {
 	 * 
 	 * @param editor - The editor instance where the images will be inserted.
 	 * @param file - The PDF file to be processed.
+	 * @param imageQuality - (Optional) The quality (scale) to render images at. If not provided, uses the plugin setting.
 	 * 
 	 * @remarks
- * This function performs the following steps:
- * 1. Converts the PDF file to an array buffer and then to a typed array.
- * 2. Loads the PDF document and retrieves the total number of pages.
- * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
- * 4. Iterates through each page of the PDF, rendering it to a canvas and converting the canvas to a PNG image.
- * 5. Saves each image to the created folder and inserts a link to the image in the editor.
- * 6. Displays progress notifications during the process and a final notification upon completion.
- * 
- * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
- */
-	private async handlePdf(editor: Editor, file: File) {
+	 * This function performs the following steps:
+	 * 1. Converts the PDF file to an array buffer and then to a typed array.
+	 * 2. Loads the PDF document and retrieves the total number of pages.
+	 * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
+	 * 4. Iterates through each page of the PDF, rendering it to a canvas using the specified image quality (scale), and converts the canvas to a PNG image.
+	 * 5. Saves each image to the created folder and inserts a link to the image in the editor.
+	 * 6. Displays progress notifications during the process and a final notification upon completion.
+	 * 
+	 * The imageQuality parameter allows overriding the default image resolution for this operation.
+	 * 
+	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
+	 */
+	private async handlePdf(editor: Editor, file: File, imageQuality?: number) {
 		let progressNotice: Notice | null = null;
 		try {
 			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
@@ -152,19 +186,25 @@ export default class Pdf2Image extends Plugin {
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
 			let folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
 
+			// Remove hashtag from folder name if present
+			let cleanPdfName = pdfName.replace(/#/g, '');
 			let folderIndex = 0; // Initialize folder index
+			folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}`); // Use cleaned name
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}_${folderIndex}`); // Update folder path with index
+				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
 
 			const imageLinks: string[] = []; // Initialize an array to store image links
 
+			// Use the provided imageQuality or fall back to settings
+			const qualityToUse = imageQuality !== undefined ? imageQuality : this.settings.imageResolution;
+
 			for (let pageNum = 1; pageNum <= totalPages; pageNum++) { // Loop through each page of the PDF
 				const page = await pdf.getPage(pageNum); // Get the page
-				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport with the specified resolution
+				const viewport = page.getViewport({ scale: qualityToUse }); // Get the viewport with the specified resolution
 				const canvas = document.createElement('canvas'); // Create a canvas element
 				const context = canvas.getContext('2d'); // Get the canvas context
 
@@ -201,7 +241,7 @@ export default class Pdf2Image extends Plugin {
 					header = await this.extractHeader(page); // Extract the header from the page if enabled
 				}
 				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
-				if (this.settings.emptyLine) {
+				if (this.settings.afterImage) {
 					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
 				}
 				imageLinks.push(imageLink); // Add the image link to the array
@@ -246,9 +286,11 @@ export default class Pdf2Image extends Plugin {
  */
 class PdfToImageModal extends Modal {
 	private file: File | null = null;
+	private imageQuality: number;
 
-	constructor(app: App, private onSubmit: (file: File) => void) {
+	constructor(app: App, private onSubmit: (file: File, imageQuality: number) => void, defaultImageQuality: number) {
 		super(app);
+		this.imageQuality = defaultImageQuality;
 	}
 
 	/**
@@ -267,19 +309,121 @@ class PdfToImageModal extends Modal {
 	 */
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
+		const header = contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
+		header.style.textAlign = 'center';
+		header.style.marginTop = '0px';
 
-		const fileInput = contentEl.createEl('input', { type: 'file', attr: { accept: '.pdf' } });
+		// File input section
+		const fileSection = contentEl.createDiv();
+		// fileSection.createEl('label', { text: 'PDF File: ' });
+
+		const fileInputWrapper = fileSection.createDiv();
+		fileInputWrapper.style.marginTop = '5px';
+		fileInputWrapper.style.textAlign = 'center';
+
+		// Hide the actual file input
+		const fileInput = fileInputWrapper.createEl('input', { 
+			type: 'file', 
+			attr: { accept: '.pdf' } 
+		});
+		fileInput.style.display = 'none';
+
+		// Create a custom button
+        const customFileButton = fileInputWrapper.createEl('button', { 
+            text: 'Choose PDF File',
+            attr: {
+                'aria-label': 'Choose PDF file to upload',
+                'aria-controls': fileInput.id || 'pdf-file-input'
+            }
+        });
+		customFileButton.style.cssText = `
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
+
+		fileInput.id = fileInput.id || 'pdf-file-input';
+
+		customFileButton.onclick = (e) => {
+			e.preventDefault();
+			fileInput.click();
+		};
+
+		// Create custom file name display
+		const fileNameDisplay = fileInputWrapper.createDiv();
+		fileNameDisplay.style.cssText = `
+			margin-top: 8px;
+			font-size: 0.9em;
+			color: #666;
+			font-style: italic;
+		`;
+		fileNameDisplay.textContent = 'No file chosen';
+
 		fileInput.onchange = () => {
 			if (fileInput.files && fileInput.files.length > 0) {
 				this.file = fileInput.files[0];
+				fileNameDisplay.textContent = `${fileInput.files[0].name}`;
+				fileNameDisplay.style.color = '#7a7a7a';
+				fileNameDisplay.style.fontStyle = 'normal';
+			} else {
+				fileNameDisplay.textContent = 'No file chosen';
+				fileNameDisplay.style.color = '#666';
+				fileNameDisplay.style.fontStyle = 'italic';
 			}
 		};
 
-		const submitButton = contentEl.createEl('button', { text: 'Convert' });
+		// Image quality dropdown section
+		const qualitySection = contentEl.createDiv();
+		qualitySection.style.marginTop = '15px';
+		qualitySection.style.textAlign = 'center';
+		qualitySection.createEl('label', { text: 'Image Quality' });
+		qualitySection.createEl('br');
+		const qualitySelect = qualitySection.createEl('select');
+		qualitySelect.style.marginTop = '5px';
+		qualitySelect.style.padding = '5px';
+		qualitySelect.style.cursor = 'pointer';
+		
+		// Add options to the dropdown
+		const qualityOptions = [
+			{ value: '0.5', text: '0.5x' },
+			{ value: '0.75', text: '0.75x' },
+			{ value: '1', text: '1x' },
+			{ value: '1.5', text: '1.5x' },
+			{ value: '2', text: '2x' }
+		];
+
+		qualityOptions.forEach(option => {
+			const optionEl = qualitySelect.createEl('option', { 
+				value: option.value, 
+				text: option.text 
+			});
+			optionEl.style.textAlign = 'center';
+			if (parseFloat(option.value) === this.imageQuality) {
+				optionEl.selected = true;
+			}
+		});
+
+		qualitySelect.onchange = () => {
+			this.imageQuality = parseFloat(qualitySelect.value);
+		};
+
+		// Add description for image quality
+		// const qualityDesc = qualitySection.createEl('div');
+		// qualityDesc.style.fontSize = '0.8em';
+		// qualityDesc.style.color = '#888';
+		// qualityDesc.style.marginTop = '5px';
+		// qualityDesc.textContent = 'Lower = faster and smaller file size, higher = slower and bigger file size';
+
+		// Submit button
+		const buttonSection = contentEl.createDiv();
+		buttonSection.style.marginTop = '20px';
+		buttonSection.style.textAlign = 'center';
+		const submitButton = buttonSection.createEl('button', { text: 'Convert' });
+		submitButton.style.padding = '10px 20px';
+		submitButton.style.cursor = 'pointer';
 		submitButton.onclick = () => {
 			if (this.file) {
-				this.onSubmit(this.file);
+				this.onSubmit(this.file, this.imageQuality);
 				this.close();
 			} else {
 				new Notice('Please select a PDF file');
@@ -346,6 +490,21 @@ class PluginSettingPage extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		// Empty Line setting
+		new Setting(containerEl)
+			.setName('Image separator')
+			.setDesc('Choose what to insert after each image.')
+			.addDropdown(dropdown => dropdown
+				.addOption('0', 'None')
+				.addOption('1', 'Empty line')
+				.addOption('2', 'Separator line')
+				.addOption('3', 'Empty line + separator line')
+				.setValue(this.plugin.settings.afterImage.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.afterImage = parseInt(value, 10);
+					await this.plugin.saveSettings();
+				}));
+
 		// Enable Headers setting
 		new Setting(containerEl)
 			.setName('Insert headers (BETA)')
@@ -360,6 +519,18 @@ class PluginSettingPage extends PluginSettingTab {
 
 		// Header advanced settings
 		if (this.plugin.settings.enableHeaders) {
+			// Remove Header Duplicates setting
+			new Setting(containerEl)
+			.setName('Remove header duplicates')
+			.setDesc('Removes duplicate headers from the image. This is useful if the same header appears on multiple pages.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.removeHeaderDuplicates)
+				.onChange(async (value) => {
+					this.plugin.settings.removeHeaderDuplicates = value;
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
 			// Header Size setting
 			new Setting(containerEl)
 				.setName('Header size')
@@ -392,16 +563,5 @@ class PluginSettingPage extends PluginSettingTab {
 						});
 				});
 		}
-
-		// Empty Line setting
-		new Setting(containerEl)
-			.setName('Empty line after image')
-			.setDesc('Adds an empty line after each image.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.emptyLine)
-				.onChange(async (value) => {
-					this.plugin.settings.emptyLine = value;
-					await this.plugin.saveSettings();
-				}));
 	}
 }
