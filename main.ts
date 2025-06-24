@@ -68,7 +68,11 @@ export default class Pdf2Image extends Plugin {
 	private openPDFToImageModal() {
 		const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (activeLeaf) {
-			new PdfToImageModal(this.app, this.handlePdf.bind(this, activeLeaf.editor)).open();
+			new PdfToImageModal(
+				this.app, 
+				this.handlePdf.bind(this, activeLeaf.editor), 
+				this.settings.imageResolution
+			).open();
 		} else {
 			new Notice('Please open a note to insert images');
 		}
@@ -166,7 +170,7 @@ export default class Pdf2Image extends Plugin {
  * 
  * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
  */
-	private async handlePdf(editor: Editor, file: File) {
+	private async handlePdf(editor: Editor, file: File, imageQuality?: number) {
 		let progressNotice: Notice | null = null;
 		try {
 			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
@@ -192,9 +196,12 @@ export default class Pdf2Image extends Plugin {
 
 			const imageLinks: string[] = []; // Initialize an array to store image links
 
+			// Use the provided imageQuality or fall back to settings
+			const qualityToUse = imageQuality !== undefined ? imageQuality : this.settings.imageResolution;
+
 			for (let pageNum = 1; pageNum <= totalPages; pageNum++) { // Loop through each page of the PDF
 				const page = await pdf.getPage(pageNum); // Get the page
-				const viewport = page.getViewport({ scale: this.settings.imageResolution }); // Get the viewport with the specified resolution
+				const viewport = page.getViewport({ scale: qualityToUse }); // Get the viewport with the specified resolution
 				const canvas = document.createElement('canvas'); // Create a canvas element
 				const context = canvas.getContext('2d'); // Get the canvas context
 
@@ -276,9 +283,11 @@ export default class Pdf2Image extends Plugin {
  */
 class PdfToImageModal extends Modal {
 	private file: File | null = null;
+	private imageQuality: number;
 
-	constructor(app: App, private onSubmit: (file: File) => void) {
+	constructor(app: App, private onSubmit: (file: File, imageQuality: number) => void, defaultImageQuality: number) {
 		super(app);
+		this.imageQuality = defaultImageQuality;
 	}
 
 	/**
@@ -297,19 +306,113 @@ class PdfToImageModal extends Modal {
 	 */
 	onOpen() {
 		const { contentEl } = this;
-		contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
+		const header = contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
+		header.style.textAlign = 'center';
+		header.style.marginTop = '0px';
 
-		const fileInput = contentEl.createEl('input', { type: 'file', attr: { accept: '.pdf' } });
+		// File input section
+		const fileSection = contentEl.createDiv();
+		// fileSection.createEl('label', { text: 'PDF File: ' });
+
+		const fileInputWrapper = fileSection.createDiv();
+		fileInputWrapper.style.marginTop = '5px';
+		fileInputWrapper.style.textAlign = 'center';
+
+		// Hide the actual file input
+		const fileInput = fileInputWrapper.createEl('input', { 
+			type: 'file', 
+			attr: { accept: '.pdf' } 
+		});
+		fileInput.style.display = 'none';
+
+		// Create a custom button
+		const customFileButton = fileInputWrapper.createEl('button', { text: 'Choose PDF File' });
+		customFileButton.style.cssText = `
+			padding: 8px 16px;
+			cursor: pointer;
+			font-size: 14px;
+		`;
+
+		customFileButton.onclick = (e) => {
+			e.preventDefault();
+			fileInput.click();
+		};
+
+		// Create custom file name display
+		const fileNameDisplay = fileInputWrapper.createDiv();
+		fileNameDisplay.style.cssText = `
+			margin-top: 8px;
+			font-size: 0.9em;
+			color: #666;
+			font-style: italic;
+		`;
+		fileNameDisplay.textContent = 'No file chosen';
+
 		fileInput.onchange = () => {
 			if (fileInput.files && fileInput.files.length > 0) {
 				this.file = fileInput.files[0];
+				fileNameDisplay.textContent = `${fileInput.files[0].name}`;
+				fileNameDisplay.style.color = '#7a7a7a';
+				fileNameDisplay.style.fontStyle = 'normal';
+			} else {
+				fileNameDisplay.textContent = 'No file chosen';
+				fileNameDisplay.style.color = '#666';
+				fileNameDisplay.style.fontStyle = 'italic';
 			}
 		};
 
-		const submitButton = contentEl.createEl('button', { text: 'Convert' });
+		// Image quality dropdown section
+		const qualitySection = contentEl.createDiv();
+		qualitySection.style.marginTop = '15px';
+		qualitySection.style.textAlign = 'center';
+		qualitySection.createEl('label', { text: 'Image Quality' });
+		qualitySection.createEl('br');
+		const qualitySelect = qualitySection.createEl('select');
+		qualitySelect.style.marginTop = '5px';
+		qualitySelect.style.padding = '5px';
+		qualitySelect.style.cursor = 'pointer';
+		
+		// Add options to the dropdown
+		const qualityOptions = [
+			{ value: '0.5', text: '0.5x' },
+			{ value: '0.75', text: '0.75x' },
+			{ value: '1', text: '1x' },
+			{ value: '1.5', text: '1.5x' },
+			{ value: '2', text: '2x' }
+		];
+
+		qualityOptions.forEach(option => {
+			const optionEl = qualitySelect.createEl('option', { 
+				value: option.value, 
+				text: option.text 
+			});
+			optionEl.style.textAlign = 'center';
+			if (parseFloat(option.value) === this.imageQuality) {
+				optionEl.selected = true;
+			}
+		});
+
+		qualitySelect.onchange = () => {
+			this.imageQuality = parseFloat(qualitySelect.value);
+		};
+
+		// Add description for image quality
+		// const qualityDesc = qualitySection.createEl('div');
+		// qualityDesc.style.fontSize = '0.8em';
+		// qualityDesc.style.color = '#888';
+		// qualityDesc.style.marginTop = '5px';
+		// qualityDesc.textContent = 'Lower = faster and smaller file size, higher = slower and bigger file size';
+
+		// Submit button
+		const buttonSection = contentEl.createDiv();
+		buttonSection.style.marginTop = '20px';
+		buttonSection.style.textAlign = 'center';
+		const submitButton = buttonSection.createEl('button', { text: 'Convert' });
+		submitButton.style.padding = '10px 20px';
+		submitButton.style.cursor = 'pointer';
 		submitButton.onclick = () => {
 			if (this.file) {
-				this.onSubmit(this.file);
+				this.onSubmit(this.file, this.imageQuality);
 				this.close();
 			} else {
 				new Notice('Please select a PDF file');
