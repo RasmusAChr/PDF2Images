@@ -158,18 +158,21 @@ export default class Pdf2Image extends Plugin {
 	 * 
 	 * @param editor - The editor instance where the images will be inserted.
 	 * @param file - The PDF file to be processed.
+	 * @param imageQuality - (Optional) The quality (scale) to render images at. If not provided, uses the plugin setting.
 	 * 
 	 * @remarks
- * This function performs the following steps:
- * 1. Converts the PDF file to an array buffer and then to a typed array.
- * 2. Loads the PDF document and retrieves the total number of pages.
- * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
- * 4. Iterates through each page of the PDF, rendering it to a canvas and converting the canvas to a PNG image.
- * 5. Saves each image to the created folder and inserts a link to the image in the editor.
- * 6. Displays progress notifications during the process and a final notification upon completion.
- * 
- * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
- */
+	 * This function performs the following steps:
+	 * 1. Converts the PDF file to an array buffer and then to a typed array.
+	 * 2. Loads the PDF document and retrieves the total number of pages.
+	 * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
+	 * 4. Iterates through each page of the PDF, rendering it to a canvas using the specified image quality (scale), and converts the canvas to a PNG image.
+	 * 5. Saves each image to the created folder and inserts a link to the image in the editor.
+	 * 6. Displays progress notifications during the process and a final notification upon completion.
+	 * 
+	 * The imageQuality parameter allows overriding the default image resolution for this operation.
+	 * 
+	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
+	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality?: number) {
 		let progressNotice: Notice | null = null;
 		try {
@@ -326,12 +329,20 @@ class PdfToImageModal extends Modal {
 		fileInput.style.display = 'none';
 
 		// Create a custom button
-		const customFileButton = fileInputWrapper.createEl('button', { text: 'Choose PDF File' });
+        const customFileButton = fileInputWrapper.createEl('button', { 
+            text: 'Choose PDF File',
+            attr: {
+                'aria-label': 'Choose PDF file to upload',
+                'aria-controls': fileInput.id || 'pdf-file-input'
+            }
+        });
 		customFileButton.style.cssText = `
-			padding: 8px 16px;
-			cursor: pointer;
-			font-size: 14px;
-		`;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
+
+		fileInput.id = fileInput.id || 'pdf-file-input';
 
 		customFileButton.onclick = (e) => {
 			e.preventDefault();
