@@ -180,6 +180,7 @@ export default class Pdf2Image extends Plugin {
 			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
 			const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
 			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
+			const initialCursor = { ...editor.getCursor() }; // Save a copy of the initial cursor position
 
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
@@ -258,7 +259,7 @@ export default class Pdf2Image extends Plugin {
 			if (this.settings.insertionMethod === 'Batch') {
 				const allImageLinks = imageLinks.join('\n'); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
-				const cursor = editor.getCursor(); // Get the current cursor position
+				const cursor = initialCursor; // Get the initial cursor position
 				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor
 				editor.scrollTo(scrollInfo.left, scrollInfo.top); // Restore the scroll position
 			}
