@@ -110,6 +110,17 @@ export default class Pdf2Image extends Plugin {
 		return basePath;
 	}
 
+	// Check and update header to avoid duplicates
+	private checkAndUpdateHeader(header: string): string {
+		if (this.settings.removeHeaderDuplicates) {
+			if (header === this.lastExtractedHeader) {
+				return '';
+			}
+			this.lastExtractedHeader = header;
+		}
+		return header;
+	}
+
 	private lastExtractedHeader: string | null = null;
 
 	private async extractHeader(page: any): Promise<string> {
@@ -137,20 +148,27 @@ export default class Pdf2Image extends Plugin {
 
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
+
+		// Handle pages that contain only the header (e.g. a title page).
+		// In such case: headerLines.length === lines.length and the average equals the largest font size,
+		// which would cause the sensitivity check to reject the header when sensitivity > 1 (common default 1.2).
+		// To support title-only pages, it should accept the header immediately.
+
+		// If there is at least one line and all lines are header lines
+		const nonEmptyLines = lines.filter((line: { text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.text.trim().length > 0);
+		if (nonEmptyLines.length > 0 && headerLines.length === nonEmptyLines.length) {
+
+			// Remove duplicate headers if the setting is enabled
+			return this.checkAndUpdateHeader(header);
+		}
+
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
 			this.lastExtractedHeader = '';
 			return '';
 		}
 
 		// Remove duplicate headers if the setting is enabled
-		if (this.settings.removeHeaderDuplicates) {
-			if (header === this.lastExtractedHeader) {
-				return '';
-			}
-			this.lastExtractedHeader = header;
-		}
-
-		return header;
+		return this.checkAndUpdateHeader(header);
 	}
 
 	/**
@@ -180,6 +198,7 @@ export default class Pdf2Image extends Plugin {
 			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
 			const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
 			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
+			const initialCursor = { ...editor.getCursor() }; // Save a copy of the initial cursor position
 
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
@@ -258,7 +277,7 @@ export default class Pdf2Image extends Plugin {
 			if (this.settings.insertionMethod === 'Batch') {
 				const allImageLinks = imageLinks.join('\n'); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
-				const cursor = editor.getCursor(); // Get the current cursor position
+				const cursor = initialCursor; // Get the initial cursor position
 				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor
 				editor.scrollTo(scrollInfo.left, scrollInfo.top); // Restore the scroll position
 			}
