@@ -158,7 +158,7 @@ export default class Pdf2Image extends Plugin {
 		if (lines.length > 0 && headerLines.length === lines.length) {
 
 			// Remove duplicate headers if the setting is enabled
-			this.checkAndUpdateHeader(header);
+			return this.checkAndUpdateHeader(header);
 		}
 
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
@@ -167,7 +167,7 @@ export default class Pdf2Image extends Plugin {
 		}
 
 		// Remove duplicate headers if the setting is enabled
-		this.checkAndUpdateHeader(header);
+		return this.checkAndUpdateHeader(header);
 	}
 
 	/**
