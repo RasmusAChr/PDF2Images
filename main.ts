@@ -110,6 +110,17 @@ export default class Pdf2Image extends Plugin {
 		return basePath;
 	}
 
+	// Check and update header to avoid duplicates
+	private checkAndUpdateHeader(header: string): string {
+		if (this.settings.removeHeaderDuplicates) {
+			if (header === this.lastExtractedHeader) {
+				return '';
+			}
+			this.lastExtractedHeader = header;
+		}
+		return header;
+	}
+
 	private lastExtractedHeader: string | null = null;
 
 	private async extractHeader(page: any): Promise<string> {
@@ -147,15 +158,7 @@ export default class Pdf2Image extends Plugin {
 		if (lines.length > 0 && headerLines.length === lines.length) {
 
 			// Remove duplicate headers if the setting is enabled
-			if (this.settings.removeHeaderDuplicates) {
-				if (header === this.lastExtractedHeader) {
-					return '';
-				}
-				this.lastExtractedHeader = header;
-			}
-
-			// Else return the header directly
-			return header;
+			this.checkAndUpdateHeader(header);
 		}
 
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
@@ -164,14 +167,7 @@ export default class Pdf2Image extends Plugin {
 		}
 
 		// Remove duplicate headers if the setting is enabled
-		if (this.settings.removeHeaderDuplicates) {
-			if (header === this.lastExtractedHeader) {
-				return '';
-			}
-			this.lastExtractedHeader = header;
-		}
-
-		return header;
+		this.checkAndUpdateHeader(header);
 	}
 
 	/**
