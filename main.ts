@@ -137,6 +137,27 @@ export default class Pdf2Image extends Plugin {
 
 		// Check if the header is significantly larger than the average font size of the page
 		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
+
+		// Handle pages that contain only the header (e.g. a title page).
+		// In such case: headerLines.length === lines.length and the average equals the largest font size,
+		// which would cause the sensitivity check to reject the header when sensitivity > 1 (common default 1.2).
+		// To support title-only pages, it should accept the header immediately.
+
+		// If there is at least one line and all lines are header lines
+		if (lines.length > 0 && headerLines.length === lines.length) {
+
+			// Remove duplicate headers if the setting is enabled
+			if (this.settings.removeHeaderDuplicates) {
+				if (header === this.lastExtractedHeader) {
+					return '';
+				}
+				this.lastExtractedHeader = header;
+			}
+
+			// Else return the header directly
+			return header;
+		}
+
 		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
 			this.lastExtractedHeader = '';
 			return '';
