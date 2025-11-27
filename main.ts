@@ -155,7 +155,8 @@ export default class Pdf2Image extends Plugin {
 		// To support title-only pages, it should accept the header immediately.
 
 		// If there is at least one line and all lines are header lines
-		if (lines.length > 0 && headerLines.length === lines.length) {
+		const nonEmptyLines = lines.filter((line: { text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.text.trim().length > 0);
+		if (nonEmptyLines.length > 0 && headerLines.length === nonEmptyLines.length) {
 
 			// Remove duplicate headers if the setting is enabled
 			return this.checkAndUpdateHeader(header);
