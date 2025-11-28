@@ -157,9 +157,9 @@ export default class Pdf2Image extends Plugin {
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
 
-				// If insertion method is 'Procedual', insert the image link immediately
-				if (this.settings.insertionMethod === 'Procedual') {
-					insertImageLink(editor, imageLink, this.settings.imageSeparator); // Insert the image link into the editor if the method is 'Procedual'
+				// If insertion method is 'Procedural', insert the image link immediately
+				if (this.settings.insertionMethod === 'Procedural') {
+					insertImageLink(editor, imageLink, this.settings.imageSeparator); // Insert the image link into the editor if the method is 'Procedural'
 				}
 			}
 
