@@ -1,13 +1,13 @@
 import { Editor, FileManager } from 'obsidian';
 
-export function imageSeparator(afterImageSetting: number): string {
-    if (afterImageSetting === 0) {
+export function imageSeparator(imageSeparatorSetting: number): string {
+    if (imageSeparatorSetting === 0) {
         return '\n';
-    } else if (afterImageSetting === 1) {
+    } else if (imageSeparatorSetting === 1) {
         return '\n\n';
-    } else if (afterImageSetting === 2) {
+    } else if (imageSeparatorSetting === 2) {
         return '\n***\n';
-    } else if (afterImageSetting === 3) {
+    } else if (imageSeparatorSetting === 3) {
         return '\n\n***\n';
     } else {
         return '\n';
@@ -19,12 +19,12 @@ export function imageSeparator(afterImageSetting: number): string {
  * Note: The cursor position here is based on the editor's state at the time of insertion, 
  * and do not reflect the real-time cursor position if the user continues typing.
  */
-export function insertImageLink(editor: Editor, imageLink: string, afterImageSetting: number) {
+export function insertImageLink(editor: Editor, imageLink: string, imageSeparatorSetting: number) {
     const cursor = editor.getCursor(); // Get the current cursor position
     let totalInsertedText = imageLink;
     
     // Build the complete text to insert based on settings
-    totalInsertedText += imageSeparator(afterImageSetting);
+    totalInsertedText += imageSeparator(imageSeparatorSetting);
     
     // Insert the complete text at once
     editor.replaceRange(totalInsertedText, cursor);

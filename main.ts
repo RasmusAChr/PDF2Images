@@ -5,7 +5,6 @@ import { imageSeparator, insertImageLink, getAttachmentFolderPath, extractHeader
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
-	ribbonEl: HTMLElement | null = null;
 	pdfjsLib: any;
 	fileManager: FileManager;
 
@@ -13,7 +12,7 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
+		this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
 			this.openPDFToImageModal()
 		});
 
@@ -158,15 +157,15 @@ export default class Pdf2Image extends Plugin {
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
 
-				// If insertion method is 'Procedual', insert the image link immediately
-				if (this.settings.insertionMethod === 'Procedual') {
-					insertImageLink(editor, imageLink, this.settings.afterImage); // Insert the image link into the editor if the method is 'Procedual'
+				// If insertion method is 'Procedural', insert the image link immediately
+				if (this.settings.insertionMethod === 'Procedural') {
+					insertImageLink(editor, imageLink, this.settings.imageSeparator); // Insert the image link into the editor if the method is 'Procedural'
 				}
 			}
 
 			// If insertion method is 'Batch', insert all image links at once
 			if (this.settings.insertionMethod === 'Batch') {
-				let separator = imageSeparator(this.settings.afterImage);
+				let separator = imageSeparator(this.settings.imageSeparator);
 				const allImageLinks = imageLinks.join(separator); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
 				const cursor = initialCursor; // Get the initial cursor position

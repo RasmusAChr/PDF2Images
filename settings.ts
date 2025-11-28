@@ -6,7 +6,7 @@ export interface PluginSettings {
 	headerExtractionSensitive: number;
 	removeHeaderDuplicates: boolean;
 	imageResolution: number;
-	afterImage: number;
+	imageSeparator: number;
 	insertionMethod: string;
 }
 
@@ -16,8 +16,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	headerExtractionSensitive: 1.2,
 	removeHeaderDuplicates: false,
 	imageResolution: 1,
-	afterImage: 0,
-	insertionMethod: 'Procedual'
+	imageSeparator: 0,
+	insertionMethod: 'Procedural'
 }
 
 export interface Pdf2Image extends Plugin {
@@ -65,7 +65,7 @@ export class PluginSettingPage extends PluginSettingTab {
 			.setName('Image insertion method')
 			.setDesc('Choose how images are inserted into the editor.')
 			.addDropdown(dropdown => dropdown
-				.addOption('Procedual', 'Procedual (inserts images one by one)')
+				.addOption('Procedural', 'Procedural (inserts images one by one)')
 				.addOption('Batch', 'Batch (inserts all images at once)')
 				.setValue(this.plugin.settings.insertionMethod)
 				.onChange(async (value) => {
@@ -82,16 +82,16 @@ export class PluginSettingPage extends PluginSettingTab {
 				.addOption('1', 'Empty line')
 				.addOption('2', 'Separator line')
 				.addOption('3', 'Empty line + separator line')
-				.setValue(this.plugin.settings.afterImage.toString())
+				.setValue(this.plugin.settings.imageSeparator.toString())
 				.onChange(async (value) => {
-					this.plugin.settings.afterImage = parseInt(value, 10);
+					this.plugin.settings.imageSeparator = parseInt(value, 10);
 					await this.plugin.saveSettings();
 				}));
 
 		// Enable Headers setting
 		new Setting(containerEl)
-			.setName('Insert headers (BETA)')
-			.setDesc('Finds headers in images and inserts them above the image. This is a beta feature and may not work as expected.')
+			.setName('Insert headers')
+			.setDesc('Finds headers in images and inserts them above the image.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableHeaders)
 				.onChange(async (value) => {
