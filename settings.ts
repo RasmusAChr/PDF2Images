@@ -10,6 +10,7 @@ export interface PluginSettings {
 	imageResolution: number;
 	imageSeparator: number;
 	insertionMethod: string;
+	maxConcurrentPages: number;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -19,7 +20,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	removeHeaderDuplicates: false,
 	imageResolution: 1,
 	imageSeparator: 0,
-	insertionMethod: 'Procedural'
+	insertionMethod: 'Procedural',
+	maxConcurrentPages: 50
 }
 
 
@@ -144,5 +146,21 @@ export class PluginSettingPage extends PluginSettingTab {
 						});
 				});
 		}
+
+		// Max Concurrent Pages setting
+		new Setting(containerEl)
+			.setName('Max concurrent pages')
+			.setDesc('The maximum number of pages to process concurrently. Increase this value for faster processing on powerful machines, or decrease it to reduce memory usage on less powerful machines. The default is 50.')
+			.addText(text => text
+				.setPlaceholder('Enter a number')
+				.setValue(this.plugin.settings.maxConcurrentPages.toString())
+				.onChange(async (value) => {
+					const intValue = parseInt(value, 10);
+					if (!isNaN(intValue) && intValue > 0) {
+						this.plugin.settings.maxConcurrentPages = intValue;
+						await this.plugin.saveSettings();
+					}
+				})
+				.inputEl.setAttribute('type', 'number'));
 	}
 }

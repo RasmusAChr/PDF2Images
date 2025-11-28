@@ -37,7 +37,14 @@ export class PdfProcessor {
             // --- 2. Processing Setup ---
             const imageLinks: string[] = []; // We keep this to track final output
             
-            const CONCURRENCY_LIMIT = 20;
+            //const CONCURRENCY_LIMIT = 20;
+
+            const CONCURRENCY_LIMIT = Math.min(
+                totalPages,
+                this.settings.maxConcurrentPages,
+            );
+
+            console.log(`Using concurrency limit: ${CONCURRENCY_LIMIT}`);
             
             let completedPages = 0;
             let lastExtractedHeader: string | null = null; 
