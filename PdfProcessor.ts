@@ -58,7 +58,7 @@ export class PdfProcessor {
                 await page.render({ canvasContext: context, viewport }).promise;
 
                 const blob = await new Promise<Blob>((resolve, reject) => {
-                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), 'image/png');
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), 'image/webp', 0.9);
                 });
 
                 // MEMORY OPTIMIZATION 1: Explicitly clean up PDF.js resources
@@ -68,7 +68,7 @@ export class PdfProcessor {
                 canvas.width = 0;
                 canvas.height = 0;
 
-                const imageName = `page_${pageNum}.png`;
+                const imageName = `page_${pageNum}.webp`;
                 const imagePath = `${folderPath}/${imageName}`;
                 const arrayBufferImg = await blob.arrayBuffer();
                 
