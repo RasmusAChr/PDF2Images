@@ -44,6 +44,8 @@ export class PluginSettingPage extends PluginSettingTab {
 
 		containerEl.empty();
 
+		new Setting(containerEl).setName("Image Settings").setHeading();
+
 		// Image Quality setting
 		new Setting(containerEl)
 			.setName('Image quality')
@@ -59,6 +61,8 @@ export class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.imageResolution = parseFloat(value);
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl).setName("Insertion Settings").setHeading();
 
 		// Insertion Method setting
 		new Setting(containerEl)
@@ -87,6 +91,8 @@ export class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.imageSeparator = parseInt(value, 10);
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl).setName("Header Settings").setHeading();
 
 		// Enable Headers setting
 		new Setting(containerEl)
@@ -147,6 +153,8 @@ export class PluginSettingPage extends PluginSettingTab {
 				});
 		}
 
+		new Setting(containerEl).setName("Advanced Settings").setHeading();
+		
 		// Max Concurrent Pages setting
 		new Setting(containerEl)
 			.setName('Max concurrent pages')
