@@ -83,7 +83,11 @@ export default class Pdf2Image extends Plugin {
 	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality?: number) {
 		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);
+		
+		const start = performance.now();
 		await processor.process(editor, file);
+		const end = performance.now();
+		console.log(`PDF processed in ${end - start} ms`);
 	}
 }
 

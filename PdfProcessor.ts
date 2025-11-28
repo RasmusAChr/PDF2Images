@@ -11,109 +11,146 @@ export class PdfProcessor {
     ) {}
 
     async process(editor: Editor, file: File) {
-        // ... Move your handlePdf logic here ...
-        // ... access settings via this.settings ...
-        // ... access app via this.app ...
         let progressNotice: Notice | null = null;
-		try {
-			const arrayBuffer = await file.arrayBuffer(); // Convert the file to an array buffer
-			const typedArray = new Uint8Array(arrayBuffer); // Create a typed array from the array buffer
-			const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise; // Load the PDF document
-			const totalPages = pdf.numPages; // Get the total number of pages in the PDF
-			const initialCursor = { ...editor.getCursor() }; // Save a copy of the initial cursor position
+        
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const typedArray = new Uint8Array(arrayBuffer);
+            const pdf = await this.pdfjsLib.getDocument({ data: typedArray }).promise;
+            const totalPages = pdf.numPages;
+            const initialCursor = { ...editor.getCursor() };
 
-			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
+            progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0);
 
-			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
+            // --- 1. Setup Folder Structure ---
+            const pdfName = file.name.replace('.pdf', '');
+            let cleanPdfName = pdfName.replace(/#/g, '');
+            let folderIndex = 0;
+            let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`);
+            
+            while (await this.app.vault.adapter.exists(folderPath)) {
+                folderIndex++;
+                folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}_${folderIndex}`);
+            }
+            await this.app.vault.createFolder(folderPath);
 
-			// Remove hashtag from folder name if present
-			let cleanPdfName = pdfName.replace(/#/g, '');
-			let folderIndex = 0; // Initialize folder index
-			let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`); // Use cleaned name
-			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
-				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
-			}
+            // --- 2. Processing Setup ---
+            const imageLinks: string[] = []; // We keep this to track final output
+            
+            const CONCURRENCY_LIMIT = 20;
+            
+            let completedPages = 0;
+            let lastExtractedHeader: string | null = null; 
 
-			await this.app.vault.createFolder(folderPath); // Create the folder
+            // --- 3. Define the heavy lifting function ---
+            const processSinglePage = async (pageNum: number) => {
+                const page = await pdf.getPage(pageNum);
+                const qualityToUse = this.settings.imageResolution;
+                const viewport = page.getViewport({ scale: qualityToUse });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                if (!context) throw new Error('Failed to get canvas context');
 
-			const imageLinks: string[] = []; // Initialize an array to store image links
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-			// Use the provided imageQuality or fall back to settings
-			const qualityToUse = this.settings.imageResolution !== undefined ? this.settings.imageResolution : this.settings.imageResolution;
+                await page.render({ canvasContext: context, viewport }).promise;
 
-			let lastExtractedHeader: string | null = null;
-			
-			for (let pageNum = 1; pageNum <= totalPages; pageNum++) { // Loop through each page of the PDF
-				const page = await pdf.getPage(pageNum); // Get the page
-				const viewport = page.getViewport({ scale: qualityToUse }); // Get the viewport with the specified resolution
-				const canvas = document.createElement('canvas'); // Create a canvas element
-				const context = canvas.getContext('2d'); // Get the canvas context
+                const blob = await new Promise<Blob>((resolve, reject) => {
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), 'image/png');
+                });
 
-				if (!context) { // Check if the context is null
-					throw new Error('Failed to get canvas context'); // Throw an error if context is null
-				}
+                // MEMORY OPTIMIZATION 1: Explicitly clean up PDF.js resources
+                page.cleanup();
 
-				canvas.height = viewport.height; // Set the canvas height
-				canvas.width = viewport.width; // Set the canvas width
+                // MEMORY OPTIMIZATION 2: Force browser to dump canvas bitmap
+                canvas.width = 0;
+                canvas.height = 0;
 
-				const renderContext = {
-					canvasContext: context, // Set the canvas context
-					viewport: viewport // Set the viewport
-				};
+                const imageName = `page_${pageNum}.png`;
+                const imagePath = `${folderPath}/${imageName}`;
+                const arrayBufferImg = await blob.arrayBuffer();
+                
+                // File I/O
+                await this.app.vault.createBinary(imagePath, arrayBufferImg);
 
-				await page.render(renderContext).promise; // Render the page to the canvas
+                // Header Extraction (Raw)
+                let rawHeader = '';
+                if (this.settings.enableHeaders) {
+                    // Pass false/null for duplicates, we filter them sequentially later
+                    const result = await extractHeader(page, false, this.settings.headerExtractionSensitive, null);
+                    rawHeader = result.header;
+                }
 
-				const blob = await new Promise<Blob>((resolve, reject) => { // Create a blob from the canvas
-					canvas.toBlob(blob => {
-						if (blob) {
-							resolve(blob); // Resolve the promise with the blob
-						} else {
-							reject(new Error('Failed to create image blob')); // Reject the promise if blob creation fails
-						}
-					}, 'image/png');
-				});
+                completedPages++;
+                if (progressNotice) {
+                    progressNotice.setMessage(`Processing PDF: ${completedPages}/${totalPages} pages`);
+                }
 
-				const imageName = `page_${pageNum}.png`; // Create the image name
-				const imagePath = `${folderPath}/${imageName}`; // Create the image path
-				await this.app.vault.createBinary(imagePath, await blob.arrayBuffer()); // Save the image to the vault
+                return {
+                    pageNum,
+                    imagePath,
+                    imageName,
+                    rawHeader
+                };
+            };
 
-				let header = '';
-				if (this.settings.enableHeaders) {
-					const result = await extractHeader(page, this.settings.removeHeaderDuplicates, this.settings.headerExtractionSensitive, lastExtractedHeader); // Extract the header from the page if enabled
-					header = result.header;
-					lastExtractedHeader = result.newLastExtractedHeader;
-				}
-				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
-				
-				imageLinks.push(imageLink); // Add the image link to the array
+            // --- 4. The Loop (Chunked) ---
+            for (let i = 1; i <= totalPages; i += CONCURRENCY_LIMIT) {
+                const chunkPromises = [];
+                
+                // Create a batch of promises
+                for (let j = 0; j < CONCURRENCY_LIMIT && (i + j) <= totalPages; j++) {
+                    chunkPromises.push(processSinglePage(i + j));
+                }
 
-				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
+                // Wait for the whole batch to finish
+                const chunkResults = await Promise.all(chunkPromises);
 
-				// If insertion method is 'Procedural', insert the image link immediately
-				if (this.settings.insertionMethod === 'Procedural') {
-					insertImageLink(editor, imageLink, this.settings.imageSeparator); // Insert the image link into the editor if the method is 'Procedural'
-				}
-			}
+                // --- 5. Sequential Post-Processing (Ordered) ---
+                for (const result of chunkResults) {
+                    let finalHeader = result.rawHeader;
 
-			// If insertion method is 'Batch', insert all image links at once
-			if (this.settings.insertionMethod === 'Batch') {
-				let separator = imageSeparator(this.settings.imageSeparator);
-				const allImageLinks = imageLinks.join(separator); // Join all image links into a single string
-				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
-				const cursor = initialCursor; // Get the initial cursor position
-				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor
-				editor.scrollTo(scrollInfo.left, scrollInfo.top); // Restore the scroll position
-			}
+                    // Apply Duplicate Logic Here (sequentially) to ensure correctness
+                    if (this.settings.enableHeaders && this.settings.removeHeaderDuplicates) {
+                        if (finalHeader === lastExtractedHeader) {
+                            finalHeader = '';
+                        } else {
+                            lastExtractedHeader = finalHeader;
+                        }
+                    }
 
-			new Notice('PDF processing complete'); // Show a notice when processing is complete
-		} catch (error) {
-			console.error(error); // Log the error to the console
-			new Notice('Failed to process PDF'); // Show a notice if processing fails
-		} finally {
-			if (progressNotice) {
-				progressNotice.hide(); // Hide the progress notice
-			}
-		}
+                    // Build the link string
+                    let imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}](${encodeURI(result.imagePath)})`;
+                    imageLinks.push(imageLink);
+
+                    // Procedural Insert (Real-time feedback)
+                    if (this.settings.insertionMethod === 'Procedural') {
+                        insertImageLink(editor, imageLink, this.settings.imageSeparator);
+                    }
+                }
+            }
+
+            // --- 6. Batch Insert ---
+            if (this.settings.insertionMethod === 'Batch') {
+                let separator = imageSeparator(this.settings.imageSeparator);
+                const allImageLinks = imageLinks.join(separator);
+                const scrollInfo = editor.getScrollInfo();
+                const cursor = initialCursor;
+                editor.replaceRange(allImageLinks, cursor);
+                editor.scrollTo(scrollInfo.left, scrollInfo.top);
+            }
+
+            new Notice('PDF processing complete');
+
+        } catch (error) {
+            console.error(error);
+            new Notice('Failed to process PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        } finally {
+            if (progressNotice) {
+                progressNotice.hide();
+            }
+        }
     }
 }
