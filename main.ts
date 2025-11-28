@@ -1,7 +1,7 @@
 import { App, Editor, MarkdownView, Notice, Plugin, normalizePath, loadPdfJs, FileManager } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, PluginSettingPage } from './settings';
 import { PdfToImageModal } from './modal';
-import { imageSeperator, insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
+import { imageSeparator, insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
@@ -166,8 +166,8 @@ export default class Pdf2Image extends Plugin {
 
 			// If insertion method is 'Batch', insert all image links at once
 			if (this.settings.insertionMethod === 'Batch') {
-				let seperator = imageSeperator(this.settings.afterImage);
-				const allImageLinks = imageLinks.join(seperator); // Join all image links into a single string
+				let separator = imageSeparator(this.settings.afterImage);
+				const allImageLinks = imageLinks.join(separator); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
 				const cursor = initialCursor; // Get the initial cursor position
 				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor

@@ -1,6 +1,6 @@
 import { Editor, FileManager } from 'obsidian';
 
-export function imageSeperator(afterImageSetting: number): string {
+export function imageSeparator(afterImageSetting: number): string {
     if (afterImageSetting === 0) {
         return '\n';
     } else if (afterImageSetting === 1) {
@@ -24,16 +24,7 @@ export function insertImageLink(editor: Editor, imageLink: string, afterImageSet
     let totalInsertedText = imageLink;
     
     // Build the complete text to insert based on settings
-    // if (afterImageSetting === 0) {
-    //     totalInsertedText += '\n';
-    // } else if (afterImageSetting === 1) {
-    //     totalInsertedText += '\n\n';
-    // } else if (afterImageSetting === 2) {
-    //     totalInsertedText += '***\n';
-    // } else if (afterImageSetting === 3) {
-    //     totalInsertedText += '\n***\n';
-    // }
-    totalInsertedText += imageSeperator(afterImageSetting);
+    totalInsertedText += imageSeparator(afterImageSetting);
     
     // Insert the complete text at once
     editor.replaceRange(totalInsertedText, cursor);
