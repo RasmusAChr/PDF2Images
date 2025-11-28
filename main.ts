@@ -1,7 +1,7 @@
 import { App, Editor, MarkdownView, Notice, Plugin, normalizePath, loadPdfJs, FileManager } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, PluginSettingPage } from './settings';
 import { PdfToImageModal } from './modal';
-import { insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
+import { imageSeperator, insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
@@ -93,12 +93,11 @@ export default class Pdf2Image extends Plugin {
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
-			let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${pdfName}`); // Create the folder path for images
 
 			// Remove hashtag from folder name if present
 			let cleanPdfName = pdfName.replace(/#/g, '');
 			let folderIndex = 0; // Initialize folder index
-			folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`); // Use cleaned name
+			let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`); // Use cleaned name
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
 				folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
@@ -154,9 +153,7 @@ export default class Pdf2Image extends Plugin {
 					lastExtractedHeader = result.newLastExtractedHeader;
 				}
 				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
-				if (this.settings.afterImage) {
-					imageLink += '\n'; // Add an empty line after the image link if the setting is enabled
-				}
+				
 				imageLinks.push(imageLink); // Add the image link to the array
 
 				progressNotice.setMessage(`Processing PDF: ${pageNum}/${totalPages} pages`); // Update the progress notice
@@ -169,7 +166,8 @@ export default class Pdf2Image extends Plugin {
 
 			// If insertion method is 'Batch', insert all image links at once
 			if (this.settings.insertionMethod === 'Batch') {
-				const allImageLinks = imageLinks.join('\n'); // Join all image links into a single string
+				let seperator = imageSeperator(this.settings.afterImage);
+				const allImageLinks = imageLinks.join(seperator); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
 				const cursor = initialCursor; // Get the initial cursor position
 				editor.replaceRange(allImageLinks, cursor); // Insert all image links into the editor

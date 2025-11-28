@@ -1,5 +1,19 @@
 import { Editor, FileManager } from 'obsidian';
 
+export function imageSeperator(afterImageSetting: number): string {
+    if (afterImageSetting === 0) {
+        return '\n';
+    } else if (afterImageSetting === 1) {
+        return '\n\n';
+    } else if (afterImageSetting === 2) {
+        return '\n***\n';
+    } else if (afterImageSetting === 3) {
+        return '\n\n***\n';
+    } else {
+        return '\n';
+    }
+}
+
 /**
  * Inserts the image link at the cursor position.
  * Note: The cursor position here is based on the editor's state at the time of insertion, 
@@ -10,15 +24,16 @@ export function insertImageLink(editor: Editor, imageLink: string, afterImageSet
     let totalInsertedText = imageLink;
     
     // Build the complete text to insert based on settings
-    if (afterImageSetting === 0) {
-        totalInsertedText += '\n';
-    } else if (afterImageSetting === 1) {
-        totalInsertedText += '\n';
-    } else if (afterImageSetting === 2) {
-        totalInsertedText += '***\n';
-    } else if (afterImageSetting === 3) {
-        totalInsertedText += '\n***\n';
-    }
+    // if (afterImageSetting === 0) {
+    //     totalInsertedText += '\n';
+    // } else if (afterImageSetting === 1) {
+    //     totalInsertedText += '\n\n';
+    // } else if (afterImageSetting === 2) {
+    //     totalInsertedText += '***\n';
+    // } else if (afterImageSetting === 3) {
+    //     totalInsertedText += '\n***\n';
+    // }
+    totalInsertedText += imageSeperator(afterImageSetting);
     
     // Insert the complete text at once
     editor.replaceRange(totalInsertedText, cursor);
