@@ -5,7 +5,6 @@ import { imageSeparator, insertImageLink, getAttachmentFolderPath, extractHeader
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
-	ribbonEl: HTMLElement | null = null;
 	pdfjsLib: any;
 	fileManager: FileManager;
 
@@ -13,7 +12,7 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.ribbonEl = this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
+		this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
 			this.openPDFToImageModal()
 		});
 
