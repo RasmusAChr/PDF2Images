@@ -1,5 +1,7 @@
 import { App, PluginSettingTab, Setting, Plugin } from 'obsidian';
 
+import type Pdf2Image from './main';
+
 export interface PluginSettings {
 	enableHeaders: boolean;
 	headerSize: string;
@@ -20,10 +22,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	insertionMethod: 'Procedural'
 }
 
-export interface Pdf2Image extends Plugin {
-    settings: PluginSettings;
-    saveSettings(): Promise<void>;
-}
 
 /**
  * Represents the settings page for the plugin.
