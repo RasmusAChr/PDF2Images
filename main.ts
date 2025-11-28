@@ -1,6 +1,7 @@
 import { App, Editor, MarkdownView, Notice, Plugin, normalizePath, loadPdfJs, FileManager } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, PluginSettingPage } from './settings';
 import { PdfToImageModal } from './modal';
+import { insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
@@ -60,99 +61,6 @@ export default class Pdf2Image extends Plugin {
 		}
 	}
 
-	// Insert the image link at the cursor position.
-	// Note: The cursor position here is based on the editor's state at the time of insertion, 
-	// and do not reflect the real-time cursor position if the user continues typing.
-	private insertImageLink(editor: Editor, imageLink: string) {
-		const cursor = editor.getCursor(); // Get the current cursor position
-		let totalInsertedText = imageLink;
-		
-		// Build the complete text to insert based on settings
-		if (this.settings.afterImage === 0) {
-			totalInsertedText += '\n';
-		} else if (this.settings.afterImage === 1) {
-			totalInsertedText += '\n';
-		} else if (this.settings.afterImage === 2) {
-			totalInsertedText += '***\n';
-		} else if (this.settings.afterImage === 3) {
-			totalInsertedText += '\n***\n';
-		}
-		
-		// Insert the complete text at once
-		editor.replaceRange(totalInsertedText, cursor);
-		
-		// Set cursor position to the end of the inserted text
-		editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + totalInsertedText.length));
-	}
-
-	// Get the folder path where the attachments will be saved
-	// Note: If the folder path is not set, use the current note's folder
-	private async getAttachmentFolderPath(): Promise<string> {
-		const basePath = this.fileManager.getAvailablePathForAttachment('');
-		return basePath;
-	}
-
-	// Check and update header to avoid duplicates
-	private checkAndUpdateHeader(header: string): string {
-		if (this.settings.removeHeaderDuplicates) {
-			if (header === this.lastExtractedHeader) {
-				return '';
-			}
-			this.lastExtractedHeader = header;
-		}
-		return header;
-	}
-
-	private lastExtractedHeader: string | null = null;
-
-	private async extractHeader(page: any): Promise<string> {
-		const textContent = await page.getTextContent();
-		const lines = textContent.items.map((item: any) => ({
-			text: 'str' in item ? item.str : '',
-			fontSize: item.transform[0] // Assuming the font size is in the first element of the transform array
-		}));
-
-		// Sort lines by font size in descending order
-		lines.sort((a: { fontSize: number; }, b: { fontSize: number; }) => b.fontSize - a.fontSize);
-
-		// Collect lines with the largest font size
-		const largestFontSize = lines[0]?.fontSize || 0;
-		const headerLines = lines.filter((line: { fontSize: any; text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.fontSize === largestFontSize && line.text.trim().length > 0);
-
-		// Join the header lines to form the complete header
-		const header = headerLines.map((line: { text: any; }) => line.text).join(' ').trim();
-
-		// If no header is found, return an empty string
-		if (!header) {
-			this.lastExtractedHeader = '';
-			return '';
-		}
-
-		// Check if the header is significantly larger than the average font size of the page
-		const averageFontSize = lines.reduce((sum: number, line: { fontSize: number; }) => sum + line.fontSize, 0) / lines.length;
-
-		// Handle pages that contain only the header (e.g. a title page).
-		// In such case: headerLines.length === lines.length and the average equals the largest font size,
-		// which would cause the sensitivity check to reject the header when sensitivity > 1 (common default 1.2).
-		// To support title-only pages, it should accept the header immediately.
-
-		// If there is at least one line and all lines are header lines
-		const nonEmptyLines = lines.filter((line: { text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.text.trim().length > 0);
-		if (nonEmptyLines.length > 0 && headerLines.length === nonEmptyLines.length) {
-
-			// Remove duplicate headers if the setting is enabled
-			return this.checkAndUpdateHeader(header);
-		}
-
-		if (largestFontSize < averageFontSize * this.settings.headerExtractionSensitive) {
-			this.lastExtractedHeader = '';
-			return '';
-		}
-
-		// Remove duplicate headers if the setting is enabled
-		return this.checkAndUpdateHeader(header);
-	}
-
 	/**
 	 * Handles the conversion of a PDF file to images and inserts them into the editor.
 	 * 
@@ -185,15 +93,15 @@ export default class Pdf2Image extends Plugin {
 			progressNotice = new Notice(`Processing PDF: 0/${totalPages} pages`, 0); // Show a progress notice
 
 			const pdfName = file.name.replace('.pdf', ''); // Get the PDF name without the extension
-			let folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${pdfName}`); // Create the folder path for images
+			let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${pdfName}`); // Create the folder path for images
 
 			// Remove hashtag from folder name if present
 			let cleanPdfName = pdfName.replace(/#/g, '');
 			let folderIndex = 0; // Initialize folder index
-			folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}`); // Use cleaned name
+			folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`); // Use cleaned name
 			while (await this.app.vault.adapter.exists(folderPath)) { // Check if the folder already exists
 				folderIndex++; // Increment folder index
-				folderPath = normalizePath(`${await this.getAttachmentFolderPath()}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
+				folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}_${folderIndex}`); // Update folder path with index
 			}
 
 			await this.app.vault.createFolder(folderPath); // Create the folder
@@ -203,6 +111,8 @@ export default class Pdf2Image extends Plugin {
 			// Use the provided imageQuality or fall back to settings
 			const qualityToUse = imageQuality !== undefined ? imageQuality : this.settings.imageResolution;
 
+			let lastExtractedHeader: string | null = null;
+			
 			for (let pageNum = 1; pageNum <= totalPages; pageNum++) { // Loop through each page of the PDF
 				const page = await pdf.getPage(pageNum); // Get the page
 				const viewport = page.getViewport({ scale: qualityToUse }); // Get the viewport with the specified resolution
@@ -239,7 +149,9 @@ export default class Pdf2Image extends Plugin {
 
 				let header = '';
 				if (this.settings.enableHeaders) {
-					header = await this.extractHeader(page); // Extract the header from the page if enabled
+					const result = await extractHeader(page, this.settings.removeHeaderDuplicates, this.settings.headerExtractionSensitive, lastExtractedHeader); // Extract the header from the page if enabled
+					header = result.header;
+					lastExtractedHeader = result.newLastExtractedHeader;
 				}
 				let imageLink = `${header ? `${this.settings.headerSize} ${header}\n` : ''}![${imageName}](${encodeURI(imagePath)})`; // Create the image link with header if available
 				if (this.settings.afterImage) {
@@ -251,7 +163,7 @@ export default class Pdf2Image extends Plugin {
 
 				// If insertion method is 'Procedual', insert the image link immediately
 				if (this.settings.insertionMethod === 'Procedual') {
-					this.insertImageLink(editor, imageLink); // Insert the image link into the editor if the method is 'Procedual'
+					insertImageLink(editor, imageLink, this.settings.afterImage); // Insert the image link into the editor if the method is 'Procedual'
 				}
 			}
 
