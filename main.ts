@@ -159,13 +159,13 @@ export default class Pdf2Image extends Plugin {
 
 				// If insertion method is 'Procedual', insert the image link immediately
 				if (this.settings.insertionMethod === 'Procedual') {
-					insertImageLink(editor, imageLink, this.settings.afterImage); // Insert the image link into the editor if the method is 'Procedual'
+					insertImageLink(editor, imageLink, this.settings.imageSeparator); // Insert the image link into the editor if the method is 'Procedual'
 				}
 			}
 
 			// If insertion method is 'Batch', insert all image links at once
 			if (this.settings.insertionMethod === 'Batch') {
-				let separator = imageSeparator(this.settings.afterImage);
+				let separator = imageSeparator(this.settings.imageSeparator);
 				const allImageLinks = imageLinks.join(separator); // Join all image links into a single string
 				const scrollInfo = editor.getScrollInfo(); // Get the current scroll info
 				const cursor = initialCursor; // Get the initial cursor position
