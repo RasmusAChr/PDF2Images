@@ -11,6 +11,7 @@ export interface PluginSettings {
 	imageSeparator: number;
 	insertionMethod: string;
 	maxConcurrentPages: number;
+	imageType: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -21,7 +22,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	imageResolution: 1,
 	imageSeparator: 0,
 	insertionMethod: 'Procedural',
-	maxConcurrentPages: 50
+	maxConcurrentPages: 50,
+	imageType: 'webp',
 }
 
 
@@ -59,6 +61,20 @@ export class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.imageResolution.toString())
 				.onChange(async (value) => {
 					this.plugin.settings.imageResolution = parseFloat(value);
+					await this.plugin.saveSettings();
+				}));
+
+		// Image Type setting
+		new Setting(containerEl)
+			.setName('Image type')
+			.setDesc('The format of the images to be generated. WebP loads faster and has smaller file sizes, PNG is slowest with bigger file size and better quality, and JPEG is in between.')
+			.addDropdown(dropdown => dropdown
+				.addOption('webp', 'WebP')
+				.addOption('jpeg', 'JPEG')
+				.addOption('png', 'PNG')
+				.setValue(this.plugin.settings.imageType)
+				.onChange(async (value) => {
+					this.plugin.settings.imageType = value;
 					await this.plugin.saveSettings();
 				}));
 
