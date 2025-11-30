@@ -81,11 +81,11 @@ export default class Pdf2Image extends Plugin {
 	 * 
 	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
 	 */
-	private async handlePdf(editor: Editor, file: File, imageQuality?: number) {
+	private async handlePdf(editor: Editor, file: File, imageQuality: number) {
 		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);
 		
 		const start = performance.now();
-		await processor.process(editor, file);
+		await processor.process(editor, file, imageQuality);
 		const end = performance.now();
 		console.log(`PDF processed in ${end - start} ms`);
 	}

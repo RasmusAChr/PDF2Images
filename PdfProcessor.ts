@@ -10,7 +10,7 @@ export class PdfProcessor {
         private fileManager: FileManager
     ) {}
 
-    async process(editor: Editor, file: File) {
+    async process(editor: Editor, file: File, imageQuality: number) {
         let progressNotice: Notice | null = null;
         
         try {
@@ -52,7 +52,7 @@ export class PdfProcessor {
             // --- 3. Define the heavy lifting function ---
             const processSinglePage = async (pageNum: number) => {
                 const page = await pdf.getPage(pageNum);
-                const qualityToUse = this.settings.imageResolution;
+                const qualityToUse = imageQuality ?? this.settings.imageResolution;
                 const viewport = page.getViewport({ scale: qualityToUse });
                 
                 const canvas = document.createElement('canvas');
