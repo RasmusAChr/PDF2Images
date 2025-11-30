@@ -1,7 +1,7 @@
 import { Editor, MarkdownView, Notice, Plugin, loadPdfJs, FileManager } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, PluginSettingPage } from './settings';
 import { PdfToImageModal } from './modal';
-import { PdfProcessor } from 'PdfProcessor';
+import { PdfProcessor } from './PdfProcessor';
 
 export default class Pdf2Image extends Plugin {
 	settings: PluginSettings;
@@ -66,11 +66,11 @@ export default class Pdf2Image extends Plugin {
 	 * 
 	 * @param editor - The editor instance where the images will be inserted.
 	 * @param file - The PDF file to be processed.
-	 * @param imageQuality - The quality (scale) to render images at. Default is the plugin setting.
+	 * @param imageQuality - The quality (scale) to render images at. This value is always provided by the modal and the default value is the plugin setting.
 	 * @remarks The imageQuality parameter allows overriding the default image resolution for this operation.
 	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality: number) {
-		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);		
+		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);
 		await processor.process(editor, file, imageQuality);
 	}
 }

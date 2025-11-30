@@ -73,7 +73,7 @@ export class PdfProcessor {
 
                 // Convert canvas to Blob (image file)
                 const blob = await new Promise<Blob>((resolve, reject) => {
-                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), `image/${this.settings.imageType}`, 0.9);
+                    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), `image/${this.settings.imageType}`, 0.9); // 0.9 is only for lossy formats
                 });
 
                 // Explicitly clean up PDF.js resources (optimization)
