@@ -28,7 +28,7 @@ export class PdfToImageModal extends Modal {
 	 * 
 	 * @remarks
 	 * - The selected file is stored in `this.file`.
-	 * - The `onSubmit` method is called with the selected file when the submit button is clicked.
+	 * - The `onSubmit` method is called with the selected file and image quality when the submit button is clicked.
 	 * - If no file is selected, a notice is displayed to the user.
 	 */
 	onOpen() {
@@ -39,7 +39,6 @@ export class PdfToImageModal extends Modal {
 
 		// File input section
 		const fileSection = contentEl.createDiv();
-		// fileSection.createEl('label', { text: 'PDF File: ' });
 
 		const fileInputWrapper = fileSection.createDiv();
 		fileInputWrapper.style.marginTop = '5px';
@@ -130,13 +129,6 @@ export class PdfToImageModal extends Modal {
 		qualitySelect.onchange = () => {
 			this.imageQuality = parseFloat(qualitySelect.value);
 		};
-
-		// Add description for image quality
-		// const qualityDesc = qualitySection.createEl('div');
-		// qualityDesc.style.fontSize = '0.8em';
-		// qualityDesc.style.color = '#888';
-		// qualityDesc.style.marginTop = '5px';
-		// qualityDesc.textContent = 'Lower = faster and smaller file size, higher = slower and bigger file size';
 
 		// Submit button
 		const buttonSection = contentEl.createDiv();

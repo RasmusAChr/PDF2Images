@@ -10,6 +10,8 @@ export interface PluginSettings {
 	imageResolution: number;
 	imageSeparator: number;
 	insertionMethod: string;
+	maxConcurrentPages: number;
+	imageType: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -19,7 +21,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	removeHeaderDuplicates: false,
 	imageResolution: 1,
 	imageSeparator: 0,
-	insertionMethod: 'Procedural'
+	insertionMethod: 'Procedural',
+	maxConcurrentPages: 50,
+	imageType: 'webp',
 }
 
 
@@ -40,7 +44,10 @@ export class PluginSettingPage extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 
+		// Clear existing content to allow re-rendering when settings change
 		containerEl.empty();
+
+		new Setting(containerEl).setName("Image Settings").setHeading();
 
 		// Image Quality setting
 		new Setting(containerEl)
@@ -57,6 +64,22 @@ export class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.imageResolution = parseFloat(value);
 					await this.plugin.saveSettings();
 				}));
+
+		// Image Type setting
+		new Setting(containerEl)
+			.setName('Image type')
+			.setDesc('The format of the images to be generated. WebP loads faster and has smaller file sizes, PNG is slowest with bigger file size and better quality, and JPEG is in between.')
+			.addDropdown(dropdown => dropdown
+				.addOption('webp', 'WebP')
+				.addOption('jpeg', 'JPEG')
+				.addOption('png', 'PNG')
+				.setValue(this.plugin.settings.imageType)
+				.onChange(async (value) => {
+					this.plugin.settings.imageType = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl).setName("Insertion Settings").setHeading();
 
 		// Insertion Method setting
 		new Setting(containerEl)
@@ -85,6 +108,8 @@ export class PluginSettingPage extends PluginSettingTab {
 					this.plugin.settings.imageSeparator = parseInt(value, 10);
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl).setName("Header Settings").setHeading();
 
 		// Enable Headers setting
 		new Setting(containerEl)
@@ -144,5 +169,25 @@ export class PluginSettingPage extends PluginSettingTab {
 						});
 				});
 		}
+
+		new Setting(containerEl).setName("Advanced Settings").setHeading();
+		
+		// Max Concurrent Pages setting
+		new Setting(containerEl)
+			.setName('Max concurrent pages')
+			.setDesc('The maximum number of pages to process concurrently. Increase this value for faster processing on powerful machines, or decrease it to reduce memory usage on less powerful machines. The default is 50.')
+			.addText(text => {
+				text
+					.setPlaceholder('Enter a number')
+					.setValue(this.plugin.settings.maxConcurrentPages.toString())
+					.onChange(async (value) => {
+						const intValue = parseInt(value, 10);
+						if (!isNaN(intValue) && intValue > 0) {
+							this.plugin.settings.maxConcurrentPages = intValue;
+							await this.plugin.saveSettings();
+						}
+					});
+				text.inputEl.setAttribute('type', 'number');
+			});
 	}
 }
