@@ -70,12 +70,8 @@ export default class Pdf2Image extends Plugin {
 	 * @remarks The imageQuality parameter allows overriding the default image resolution for this operation.
 	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality: number) {
-		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);
-		
-		const start = performance.now();
+		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);		
 		await processor.process(editor, file, imageQuality);
-		const end = performance.now();
-		console.log(`PDF processed in ${end - start} ms`);
 	}
 }
 
