@@ -55,6 +55,10 @@ export class PdfProcessor {
                 const qualityToUse = imageQuality ?? this.settings.imageResolution;
                 const viewport = page.getViewport({ scale: qualityToUse });
                 
+                // Get original dimensions for display width
+                const originalViewport = page.getViewport({ scale: 1.0 });
+                const displayWidth = Math.round(originalViewport.width);
+
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 if (!context) throw new Error('Failed to get canvas context');
@@ -99,7 +103,9 @@ export class PdfProcessor {
                     pageNum,
                     imagePath,
                     imageName,
-                    rawHeader
+                    rawHeader,
+                    displayWidth,
+                    qualityToUse
                 };
             };
 
@@ -129,7 +135,12 @@ export class PdfProcessor {
                     }
 
                     // Build the link string
-                    let imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}](${encodeURI(result.imagePath)})`;
+                    let imageLink = '';
+                    if (result.qualityToUse < 1.0) {
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}|${result.displayWidth}](${encodeURI(result.imagePath)})`;
+                    } else {
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}](${encodeURI(result.imagePath)})`;
+                    }
                     imageLinks.push(imageLink);
 
                     // Procedural Insert (Real-time feedback)
