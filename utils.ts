@@ -1,5 +1,8 @@
 import { Editor, FileManager } from 'obsidian';
 
+/**
+ * Returns the appropriate image separator based on the user's setting.
+ */
 export function imageSeparator(imageSeparatorSetting: number): string {
     if (imageSeparatorSetting === 0) {
         return '\n';
@@ -17,20 +20,17 @@ export function imageSeparator(imageSeparatorSetting: number): string {
 /**
  * Inserts the image link at the cursor position.
  * Note: The cursor position here is based on the editor's state at the time of insertion, 
- * and do not reflect the real-time cursor position if the user continues typing.
+ * and does not reflect the real-time cursor position if the user continues typing.
  */
-export function insertImageLink(editor: Editor, imageLink: string, imageSeparatorSetting: number) {
-    const cursor = editor.getCursor(); // Get the current cursor position
-    let totalInsertedText = imageLink;
+export function insertImageLink(editor: Editor, insertPosition: { line: number; ch: number }, imageLink: string, imageSeparatorSetting: number) {
+    const separator = imageSeparator(imageSeparatorSetting);
+    const textToInsert = imageLink + separator;
     
-    // Build the complete text to insert based on settings
-    totalInsertedText += imageSeparator(imageSeparatorSetting);
+    editor.replaceRange(textToInsert, insertPosition);
     
-    // Insert the complete text at once
-    editor.replaceRange(totalInsertedText, cursor);
-    
-    // Set cursor position to the end of the inserted text
-    editor.setCursor(editor.offsetToPos(editor.posToOffset(cursor) + totalInsertedText.length));
+    // Calculate and return the updated insert position for next image
+    const insertedLength = textToInsert.length;
+    return editor.offsetToPos(editor.posToOffset(insertPosition) + insertedLength);
 }
 
 /**
@@ -42,22 +42,14 @@ export async function getAttachmentFolderPath(fileManager: FileManager): Promise
     return basePath;
 }
 
-// Check and update header to avoid duplicates
-function checkAndUpdateHeader(header: string, removeHeaderDuplicatesSetting: boolean, lastExtractedHeader: string | null): { header: string, newLastExtractedHeader: string | null } {
-    if (removeHeaderDuplicatesSetting) {
-        if (header === lastExtractedHeader) {
-            return { header: '', newLastExtractedHeader: lastExtractedHeader };
-        }
-        return { header: header, newLastExtractedHeader: header };
-    }
-    return { header: header, newLastExtractedHeader: lastExtractedHeader };
-}
-
-export async function extractHeader(page: any, removeHeaderDuplicatesSetting: boolean, headerExtractionSensitiveSetting: number, lastExtractedHeader: string | null): Promise<{ header: string, newLastExtractedHeader: string | null }> {
+/** 
+ * Extracts the header from a PDF page based on font size analysis.
+ */
+export async function extractHeader(page: any, headerExtractionSensitiveSetting: number): Promise<string> {
     const textContent = await page.getTextContent();
     const lines = textContent.items.map((item: any) => ({
         text: 'str' in item ? item.str : '',
-        fontSize: item.transform[0] // Assuming the font size is in the first element of the transform array
+        fontSize: item.transform[0] // Font size is in the first element of the transform array
     }));
 
     // Sort lines by font size in descending order
@@ -72,7 +64,7 @@ export async function extractHeader(page: any, removeHeaderDuplicatesSetting: bo
 
     // If no header is found, return an empty string
     if (!header) {
-        return { header: '', newLastExtractedHeader: '' };
+        return '';
     }
 
     // Check if the header is significantly larger than the average font size of the page
@@ -86,15 +78,13 @@ export async function extractHeader(page: any, removeHeaderDuplicatesSetting: bo
     // If there is at least one line and all lines are header lines
     const nonEmptyLines = lines.filter((line: { text: { trim: () => { (): any; new(): any; length: number; }; }; }) => line.text.trim().length > 0);
     if (nonEmptyLines.length > 0 && headerLines.length === nonEmptyLines.length) {
-
-        // Remove duplicate headers if the setting is enabled
-        return checkAndUpdateHeader(header, removeHeaderDuplicatesSetting, lastExtractedHeader);
+        return header;
     }
 
+    // If the header is not significantly larger, return an empty string
     if (largestFontSize < averageFontSize * headerExtractionSensitiveSetting) {
-        return { header: '', newLastExtractedHeader: '' };
+        return '';
     }
 
-    // Remove duplicate headers if the setting is enabled
-    return checkAndUpdateHeader(header, removeHeaderDuplicatesSetting, lastExtractedHeader);
+    return header;
 }

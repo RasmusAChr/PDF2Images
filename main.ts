@@ -1,7 +1,6 @@
-import { App, Editor, MarkdownView, Notice, Plugin, normalizePath, loadPdfJs, FileManager } from 'obsidian';
+import { Editor, MarkdownView, Notice, Plugin, loadPdfJs, FileManager } from 'obsidian';
 import { PluginSettings, DEFAULT_SETTINGS, PluginSettingPage } from './settings';
 import { PdfToImageModal } from './modal';
-import { imageSeparator, insertImageLink, getAttachmentFolderPath, extractHeader } from './utils';
 import { PdfProcessor } from 'PdfProcessor';
 
 export default class Pdf2Image extends Plugin {
@@ -13,14 +12,15 @@ export default class Pdf2Image extends Plugin {
 	async onload() {
 		await this.loadSettings(); // Load the settings
 		this.addSettingTab(new PluginSettingPage(this.app, this)); // Add the settings tab
-		this.addRibbonIcon('image-plus', 'Convert PDF to images', () => {
+		this.addRibbonIcon('image-plus', 'Convert PDF to images', () => { // Add ribbon icon to open modal
 			this.openPDFToImageModal()
 		});
 
-		this.pdfjsLib = await loadPdfJs();
-		this.fileManager = this.app.fileManager;
+		this.pdfjsLib = await loadPdfJs(); // Load PDF.js library
+		this.fileManager = this.app.fileManager; // Initialize file manager to be used in PdfProcessor
 
 		// Conditional command to open the modal
+		// This command is only active when a note is open
 		this.addCommand({
 			id: 'open-pdf-to-image-modal',
 			name: 'Convert PDF to images',
@@ -47,7 +47,7 @@ export default class Pdf2Image extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	// Open the modal to convert PDF to images
+	// Open the modal to convert PDF to images if a note is active
 	private openPDFToImageModal() {
 		const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (activeLeaf) {
@@ -66,20 +66,8 @@ export default class Pdf2Image extends Plugin {
 	 * 
 	 * @param editor - The editor instance where the images will be inserted.
 	 * @param file - The PDF file to be processed.
-	 * @param imageQuality - (Optional) The quality (scale) to render images at. If not provided, uses the plugin setting.
-	 * 
-	 * @remarks
-	 * This function performs the following steps:
-	 * 1. Converts the PDF file to an array buffer and then to a typed array.
-	 * 2. Loads the PDF document and retrieves the total number of pages.
-	 * 3. Creates a folder to store the images, ensuring a unique folder name if necessary.
-	 * 4. Iterates through each page of the PDF, rendering it to a canvas using the specified image quality (scale), and converts the canvas to a PNG image.
-	 * 5. Saves each image to the created folder and inserts a link to the image in the editor.
-	 * 6. Displays progress notifications during the process and a final notification upon completion.
-	 * 
-	 * The imageQuality parameter allows overriding the default image resolution for this operation.
-	 * 
-	 * @throws Will throw an error if the canvas context cannot be obtained or if the image blob creation fails.
+	 * @param imageQuality - The quality (scale) to render images at. Default is the plugin setting.
+	 * @remarks The imageQuality parameter allows overriding the default image resolution for this operation.
 	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality: number) {
 		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);

@@ -44,6 +44,7 @@ export class PluginSettingPage extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 
+		// Clear existing content to allow re-rendering when settings change
 		containerEl.empty();
 
 		new Setting(containerEl).setName("Image Settings").setHeading();
