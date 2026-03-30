@@ -1,4 +1,5 @@
-import { Editor, FileManager } from 'obsidian';
+import { Editor, FileManager, Notice } from 'obsidian';
+import { PluginSettings } from './settings';
 
 /**
  * Returns the appropriate image separator based on the user's setting.
@@ -37,9 +38,18 @@ export function insertImageLink(editor: Editor, insertPosition: { line: number; 
  * Get the folder path where the attachments will be saved
  * Note: If the folder path is not set, use the current note's folder
  */
-export async function getAttachmentFolderPath(fileManager: FileManager): Promise<string> {
-    const basePath = fileManager.getAvailablePathForAttachment('');
-    return basePath;
+export async function getAttachmentFolderPath(fileManager: FileManager, settings: PluginSettings) {
+    // Check if custom destination folder is set in settings
+    if (settings.useDefaultDestinationFolder) { 
+        const basePath = fileManager.getAvailablePathForAttachment('');
+        return basePath;
+    } else {
+        if (settings.destinationFolder == '') {
+            throw new Error('No destination folder selected');
+        } else {
+            return settings.destinationFolder;
+        }
+    }
 }
 
 /** 

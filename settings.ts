@@ -63,6 +63,7 @@ export class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.useDefaultDestinationFolder)
 				.onChange(async (value) => {
 					this.plugin.settings.useDefaultDestinationFolder = value;
+					this.plugin.settings.destinationFolder = '';
 					await this.plugin.saveSettings();
 					this.display(); // Refresh the settings page to show/hide the custom destination folder setting
 				}));
