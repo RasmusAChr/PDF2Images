@@ -1,6 +1,6 @@
 import { App, Editor, Notice, normalizePath, FileManager } from 'obsidian';
 import { PluginSettings } from './settings';
-import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator } from './utils';
+import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator, sanitizeFolderName } from './utils';
 
 export class PdfProcessor {
     constructor(
@@ -27,9 +27,9 @@ export class PdfProcessor {
             const pdfName = file.name.replace('.pdf', ''); // Remove .pdf extension from file name
             
             // Clean name to avoid issues with folder names
-            let cleanPdfName = this.settings.customImageFolderName && customFolderName
-                ? customFolderName.replace(/#/g, '')
-                : pdfName.replace(/#/g, '');
+            let cleanPdfName = this.settings.useCustomImageFolderName && customFolderName
+                ? sanitizeFolderName(customFolderName)
+                : sanitizeFolderName(pdfName);
             
             let folderIndex = 0; // Initial folder index for uniqueness
             let folderPath: string;

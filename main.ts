@@ -55,7 +55,7 @@ export default class Pdf2Image extends Plugin {
 				this.app, 
 				this.handlePdf.bind(this, activeLeaf.editor),
 				this.settings.imageResolution,
-				this.settings.customImageFolderName
+				this.settings.useCustomImageFolderName
 			).open();
 		} else {
 			new Notice('Please open a note to insert images');
@@ -68,6 +68,7 @@ export default class Pdf2Image extends Plugin {
 	 * @param editor - The editor instance where the images will be inserted.
 	 * @param file - The PDF file to be processed.
 	 * @param imageQuality - The quality (scale) to render images at. This value is always provided by the modal and the default value is the plugin setting.
+	 * @param customFolderName - The custom folder name provided by the user in the modal. This is only used if the "Use custom image folder name" setting is enabled.
 	 * @remarks The imageQuality parameter allows overriding the default image resolution for this operation.
 	 */
 	private async handlePdf(editor: Editor, file: File, imageQuality: number, customFolderName: string) {

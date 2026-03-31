@@ -51,6 +51,19 @@ export async function getAttachmentFolderPath(fileManager: FileManager, settings
         }
     }
 }
+/** 
+ * Sanitizes a folder name by removing illegal characters and trimming whitespace.
+ * @param name - The folder name to sanitize.
+ * @returns The sanitized folder name.
+ */
+export function sanitizeFolderName(name: string): string {
+    return name
+        .replace(/[#\/\\:*?"<>|]/g, '')  // strip illegal/path chars
+        .replace(/\.\./g, '')             // strip traversal sequences
+        .replace(/^[\s.]+|[\s.]+$/g, '')  // trim leading/trailing dots and spaces
+        .replace(/\s+/g, ' ')             // collapse internal whitespace
+        .slice(0, 255);                   // enforce reasonable max length
+}
 
 /** 
  * Extracts the header from a PDF page based on font size analysis.

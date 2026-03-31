@@ -1,4 +1,5 @@
 import { App, Modal, Notice } from 'obsidian';
+import { sanitizeFolderName } from 'utils';
 
 /**
  * A modal dialog for selecting a PDF file and converting it to images.
@@ -34,6 +35,7 @@ export class PdfToImageModal extends Modal {
 	 * - If no file is selected, a notice is displayed to the user.
 	 */
 	onOpen() {
+		const ILLEGAL_CHARS = /[#\/\\:*?"<>|.]/;
 		const { contentEl } = this;
 		const header = contentEl.createEl('h2', { text: 'Select a PDF file to convert' });
 		header.style.textAlign = 'center';
@@ -102,10 +104,10 @@ export class PdfToImageModal extends Modal {
 			const folderSection = contentEl.createDiv();
 			folderSection.style.marginTop = '15px';
 			folderSection.style.textAlign = 'center';
-			folderSection.createEl('label', { text: 'Image Folder Name' });
+			folderSection.createEl('label', { text: 'Image Folder Name', attr: { for: 'image-folder-name-input' } });
 			folderSection.createEl('br');
 
-			const folderInput = folderSection.createEl('input', { type: 'text' });
+			const folderInput = folderSection.createEl('input', { type: 'text', attr: { id: 'image-folder-name-input' } });
 			folderInput.style.cssText = `
 				margin-top: 5px;
 				padding: 5px;
@@ -163,6 +165,10 @@ export class PdfToImageModal extends Modal {
 			if (this.file) {
 				if (this.useCustomFolderName && !this.customFolderName) {
 					new Notice('Please enter a folder name or disable the custom folder name setting');
+					return;
+				}
+				if (ILLEGAL_CHARS.test(this.customFolderName)) {
+					new Notice('Folder name contains invalid characters: # / \\ : * ? " < > | .');
 					return;
 				}
 				this.onSubmit(this.file, this.imageQuality, this.customFolderName);

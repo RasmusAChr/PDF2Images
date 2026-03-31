@@ -5,7 +5,7 @@ import type Pdf2Image from './main';
 
 export interface PluginSettings {
 	useDefaultDestinationFolder: boolean;
-	customImageFolderName: boolean;
+	useCustomImageFolderName: boolean;
 	destinationFolder: string;
 	enableHeaders: boolean;
 	headerSize: string;
@@ -20,7 +20,7 @@ export interface PluginSettings {
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	useDefaultDestinationFolder: true,
-	customImageFolderName: false,
+	useCustomImageFolderName: false,
 	destinationFolder: '',
 	enableHeaders: false,
 	headerSize: "#",
@@ -66,7 +66,6 @@ export class PluginSettingPage extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.useDefaultDestinationFolder = value;
 					await this.plugin.saveSettings();
-					this.display(); // Refresh the settings page to show/hide the custom destination folder setting
 				}));
 
 		/// Custom destination folder setting
@@ -92,11 +91,10 @@ export class PluginSettingPage extends PluginSettingTab {
 			.setName('Use custom image folder name')
 			.setDesc('When enabled, images will be saved in a folder with a custom name.')
 			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.customImageFolderName)
+				.setValue(this.plugin.settings.useCustomImageFolderName)
 				.onChange(async (value) => {
-					this.plugin.settings.customImageFolderName = value;
+					this.plugin.settings.useCustomImageFolderName = value;
 					await this.plugin.saveSettings();
-					this.display(); // Refresh the settings page to show/hide the custom image folder name setting
 				}));
 
 		new Setting(containerEl).setName("Image Settings").setHeading();
