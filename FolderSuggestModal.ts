@@ -1,24 +1,26 @@
-import { App, FuzzySuggestModal, TFolder } from 'obsidian';
+import { App, AbstractInputSuggest, TFolder } from 'obsidian';
 
-// Add this class before PluginSettingPage
-export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
-	private onChoose: (folder: TFolder) => void;
+export class FolderSuggest extends AbstractInputSuggest<TFolder> {
+    private inputEl: HTMLInputElement;
 
-	constructor(app: App, onChoose: (folder: TFolder) => void) {
-		super(app);
-		this.onChoose = onChoose;
-		this.setPlaceholder('Type to search folders...');
-	}
+    constructor(app: App, inputEl: HTMLInputElement) {
+        super(app, inputEl);
+        this.inputEl = inputEl;
+    }
 
-	getItems(): TFolder[] {
-		return this.app.vault.getAllFolders();
-	}
+    getSuggestions(query: string): TFolder[] {
+        const folders = this.app.vault.getAllFolders();
+        const lower = query.toLowerCase();
+        return folders.filter(f => f.path.toLowerCase().includes(lower));
+    }
 
-	getItemText(folder: TFolder): string {
-		return folder.path;
-	}
+    renderSuggestion(folder: TFolder, el: HTMLElement): void {
+        el.setText(folder.path);
+    }
 
-	onChooseItem(folder: TFolder): void {
-		this.onChoose(folder);
-	}
+    selectSuggestion(folder: TFolder): void {
+        this.inputEl.value = folder.path;
+        this.inputEl.trigger('input'); // fires onChange
+        this.close();
+    }
 }

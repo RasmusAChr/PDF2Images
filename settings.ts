@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, Plugin } from 'obsidian';
-import { FolderSuggestModal } from './FolderSuggestModal';
+import { FolderSuggest, FolderSuggestModal } from './FolderSuggestModal';
 
 import type Pdf2Image from './main';
 
@@ -74,23 +74,17 @@ export class PluginSettingPage extends PluginSettingTab {
 				new Setting(containerEl)
 					.setName('Destination folder')
 					.setDesc('The folder where images will be saved.')
-					.addText(text => text
-						.setPlaceholder('Select a folder...')
-						.setValue(this.plugin.settings.destinationFolder)
-						.onChange(async (value) => {
-							this.plugin.settings.destinationFolder = value;
-							await this.plugin.saveSettings();
-						}))
-					.addButton(button => button
-						.setButtonText('Browse')
-						.setCta()
-						.onClick(() => {
-							new FolderSuggestModal(this.app, async (folder) => {
-								this.plugin.settings.destinationFolder = folder.path;
+					.addText(text => {
+						text
+							.setPlaceholder('Select a folder...')
+							.setValue(this.plugin.settings.destinationFolder)
+							.onChange(async (value) => {
+								this.plugin.settings.destinationFolder = value;
 								await this.plugin.saveSettings();
-								this.display(); // Refresh to show updated value
-							}).open();
-						}));
+							});
+
+						new FolderSuggest(this.app, text.inputEl);
+					});
 			}
 		}
 
