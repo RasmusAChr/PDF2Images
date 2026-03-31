@@ -53,8 +53,9 @@ export default class Pdf2Image extends Plugin {
 		if (activeLeaf) {
 			new PdfToImageModal(
 				this.app, 
-				this.handlePdf.bind(this, activeLeaf.editor), 
-				this.settings.imageResolution
+				this.handlePdf.bind(this, activeLeaf.editor),
+				this.settings.imageResolution,
+				this.settings.customImageFolderName
 			).open();
 		} else {
 			new Notice('Please open a note to insert images');
@@ -69,9 +70,9 @@ export default class Pdf2Image extends Plugin {
 	 * @param imageQuality - The quality (scale) to render images at. This value is always provided by the modal and the default value is the plugin setting.
 	 * @remarks The imageQuality parameter allows overriding the default image resolution for this operation.
 	 */
-	private async handlePdf(editor: Editor, file: File, imageQuality: number) {
+	private async handlePdf(editor: Editor, file: File, imageQuality: number, customFolderName: string) {
 		const processor = new PdfProcessor(this.app, this.pdfjsLib, this.settings, this.fileManager);
-		await processor.process(editor, file, imageQuality);
+		await processor.process(editor, file, imageQuality, customFolderName);
 	}
 }
 

@@ -10,7 +10,7 @@ export class PdfProcessor {
         private fileManager: FileManager // File manager instance
     ) {}
 
-    async process(editor: Editor, file: File, imageQuality: number) {
+    async process(editor: Editor, file: File, imageQuality: number, customFolderName: string) {
 
         // Initialize progress notice
         let progressNotice: Notice | null = null;
@@ -25,7 +25,12 @@ export class PdfProcessor {
 
             // --- 1. Setup Folder Structure ---
             const pdfName = file.name.replace('.pdf', ''); // Remove .pdf extension from file name
-            let cleanPdfName = pdfName.replace(/#/g, ''); // Clean name to avoid issues with folder names
+            
+            // Clean name to avoid issues with folder names
+            let cleanPdfName = this.settings.customImageFolderName && customFolderName
+                ? customFolderName.replace(/#/g, '')
+                : pdfName.replace(/#/g, '');
+            
             let folderIndex = 0; // Initial folder index for uniqueness
             let folderPath: string;
             let baseFolderPath: string;

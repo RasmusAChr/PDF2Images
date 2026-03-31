@@ -11,10 +11,12 @@ import { App, Modal, Notice } from 'obsidian';
 export class PdfToImageModal extends Modal {
 	private file: File | null = null;
 	private imageQuality: number;
+	private customFolderName: string = '';
 
-	constructor(app: App, private onSubmit: (file: File, imageQuality: number) => void, defaultImageQuality: number) {
+	constructor(app: App, private onSubmit: (file: File, imageQuality: number, customFolderName: string) => void, defaultImageQuality: number, private useCustomFolderName: boolean) {
 		super(app);
 		this.imageQuality = defaultImageQuality;
+
 	}
 
 	/**
@@ -95,6 +97,26 @@ export class PdfToImageModal extends Modal {
 			}
 		};
 
+		// Custom folder name input (only shown if setting is enabled)
+		if (this.useCustomFolderName) {
+			const folderSection = contentEl.createDiv();
+			folderSection.style.marginTop = '15px';
+			folderSection.style.textAlign = 'center';
+			folderSection.createEl('label', { text: 'Image Folder Name' });
+			folderSection.createEl('br');
+
+			const folderInput = folderSection.createEl('input', { type: 'text' });
+			folderInput.style.cssText = `
+				margin-top: 5px;
+				padding: 5px;
+				width: 80%;
+			`;
+			folderInput.placeholder = 'e.g. my-pdf-images';
+			folderInput.oninput = () => {
+				this.customFolderName = folderInput.value.trim();
+			};
+		}
+
 		// Image quality dropdown section
 		const qualitySection = contentEl.createDiv();
 		qualitySection.style.marginTop = '15px';
@@ -139,7 +161,11 @@ export class PdfToImageModal extends Modal {
 		submitButton.style.cursor = 'pointer';
 		submitButton.onclick = () => {
 			if (this.file) {
-				this.onSubmit(this.file, this.imageQuality);
+				if (this.useCustomFolderName && !this.customFolderName) {
+					new Notice('Please enter a folder name or disable the custom folder name setting');
+					return;
+				}
+				this.onSubmit(this.file, this.imageQuality, this.customFolderName);
 				this.close();
 			} else {
 				new Notice('Please select a PDF file');
