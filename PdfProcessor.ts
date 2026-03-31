@@ -28,8 +28,11 @@ export class PdfProcessor {
             let cleanPdfName = pdfName.replace(/#/g, ''); // Clean name to avoid issues with folder names
             let folderIndex = 0; // Initial folder index for uniqueness
             let folderPath: string;
+            let baseFolderPath: string;
+            
             try {
-                folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager, this.settings)}/${cleanPdfName}`);
+                baseFolderPath = await getAttachmentFolderPath(this.fileManager, this.settings);
+                folderPath = normalizePath(`${baseFolderPath}/${cleanPdfName}`);
             } catch (e) {
                 new Notice('No destination folder selected');
                 return; // No destination folder set
@@ -38,7 +41,7 @@ export class PdfProcessor {
             // If folder with same name exists, append index to make it unique
             while (await this.app.vault.adapter.exists(folderPath)) {
                 folderIndex++;
-                folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager, this.settings)}/${cleanPdfName}_${folderIndex}`);
+                folderPath = normalizePath(`${baseFolderPath}/${cleanPdfName}_${folderIndex}`);
             }
             await this.app.vault.createFolder(folderPath); // Create the unique folder
 

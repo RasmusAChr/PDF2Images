@@ -1,4 +1,4 @@
-import { Editor, FileManager, Notice } from 'obsidian';
+import { Editor, FileManager } from 'obsidian';
 import { PluginSettings } from './settings';
 
 /**
@@ -36,7 +36,7 @@ export function insertImageLink(editor: Editor, insertPosition: { line: number; 
 
 /**
  * Get the folder path where the attachments will be saved
- * Note: If the folder path is not set, use the current note's folder
+ * Note: If the folder path is not set, it will throw an error, which should be handled by the caller.
  */
 export async function getAttachmentFolderPath(fileManager: FileManager, settings: PluginSettings) {
     // Check if custom destination folder is set in settings
@@ -44,7 +44,7 @@ export async function getAttachmentFolderPath(fileManager: FileManager, settings
         const basePath = fileManager.getAvailablePathForAttachment('');
         return basePath;
     } else {
-        if (settings.destinationFolder == '') {
+        if (settings.destinationFolder === '') {
             throw new Error('No destination folder selected');
         } else {
             return settings.destinationFolder;

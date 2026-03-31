@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, Plugin } from 'obsidian';
-import { FolderSuggest, FolderSuggestModal } from './FolderSuggestModal';
+import { FolderSuggest } from './FolderSuggestModal';
 
 import type Pdf2Image from './main';
 
@@ -63,29 +63,26 @@ export class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.useDefaultDestinationFolder)
 				.onChange(async (value) => {
 					this.plugin.settings.useDefaultDestinationFolder = value;
-					this.plugin.settings.destinationFolder = '';
 					await this.plugin.saveSettings();
 					this.display(); // Refresh the settings page to show/hide the custom destination folder setting
 				}));
 
 		/// Custom destination folder setting
 		if (!this.plugin.settings.useDefaultDestinationFolder) {
-			if (!this.plugin.settings.useDefaultDestinationFolder) {
-				new Setting(containerEl)
-					.setName('Destination folder')
-					.setDesc('The folder where images will be saved.')
-					.addText(text => {
-						text
-							.setPlaceholder('Select a folder...')
-							.setValue(this.plugin.settings.destinationFolder)
-							.onChange(async (value) => {
-								this.plugin.settings.destinationFolder = value;
-								await this.plugin.saveSettings();
-							});
+			new Setting(containerEl)
+				.setName('Destination folder')
+				.setDesc('The folder where images will be saved.')
+				.addText(text => {
+					text
+						.setPlaceholder('Select a folder...')
+						.setValue(this.plugin.settings.destinationFolder)
+						.onChange(async (value) => {
+							this.plugin.settings.destinationFolder = value;
+							await this.plugin.saveSettings();
+						});
 
-						new FolderSuggest(this.app, text.inputEl);
-					});
-			}
+					new FolderSuggest(this.app, text.inputEl);
+				});
 		}
 
 		new Setting(containerEl).setName("Image Settings").setHeading();
