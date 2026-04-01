@@ -66,6 +66,7 @@ export class PluginSettingPage extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.useDefaultDestinationFolder = value;
 					await this.plugin.saveSettings();
+					this.display(); // Refresh the settings page to show/hide the header size setting
 				}));
 
 		/// Custom destination folder setting
