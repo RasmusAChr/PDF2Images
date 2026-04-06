@@ -1,6 +1,7 @@
 import { App, Editor, Notice, normalizePath, FileManager } from 'obsidian';
 import { PluginSettings } from './settings';
 import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator, sanitizeFolderName } from './utils';
+import { ImageNamingModal } from './ImageNamingModal';
 
 export class PdfProcessor {
     constructor(
@@ -63,6 +64,9 @@ export class PdfProcessor {
             let completedPages = 0; // Counter for completed pages
             let lastExtractedHeader: string | null = null;  // For duplicate header checking
 
+            // Track used names to avoid collisions when user enters duplicate names
+            const usedNames = new Set<string>();
+
             progressNotice = new Notice(`Processing PDF: ${completedPages}/${totalPages} pages`, 0); // Update notice to show start of progress
 
             // --- 3. Define the heavy lifting function ---
@@ -90,19 +94,15 @@ export class PdfProcessor {
                     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), `image/${this.settings.imageType}`, 0.9); // 0.9 is only for lossy formats
                 });
 
+                // Capture preview BEFORE clearing canvas
+                const dataUrl = canvas.toDataURL(`image/${this.settings.imageType}`, 0.9);
+
                 // Explicitly clean up PDF.js resources (optimization)
                 page.cleanup();
 
                 // Force browser to dump canvas bitmap (optimization)
                 canvas.width = 0;
                 canvas.height = 0;
-
-                const imageName = `page_${pageNum}.${this.settings.imageType}`; // Get image name
-                const imagePath = `${folderPath}/${imageName}`; // Full path for image in vault
-                const arrayBufferImg = await blob.arrayBuffer(); // Convert Blob to ArrayBuffer for Obsidian Vault
-                
-                // File I/O - Create the image file in the vault
-                await this.app.vault.createBinary(imagePath, arrayBufferImg);
 
                 // Header Extraction
                 let rawHeader = '';
@@ -117,11 +117,12 @@ export class PdfProcessor {
 
                 return {
                     pageNum,
-                    imagePath,
-                    imageName,
                     rawHeader,
                     displayWidth,
-                    qualityToUse
+                    qualityToUse,
+                    blob,
+                    dataUrl,
+                    folderPath
                 };
             };
 
@@ -151,13 +152,44 @@ export class PdfProcessor {
                         }
                     }
 
+                    // Naming logic
+                    const defaultBaseName = `page_${result.pageNum}`;
+                    let baseName = defaultBaseName;
+
+                    if (this.settings.enableImageNaming) {
+                        const modal = new ImageNamingModal(
+                            this.app,
+                            result.dataUrl,
+                            result.pageNum,
+                            totalPages,
+                            defaultBaseName
+                        );
+                        baseName = await modal.waitForInput();
+                        baseName = sanitizeFolderName(baseName) || defaultBaseName;
+                    }
+
+                    // Ensure name uniqueness
+                    let uniqueBaseName = baseName;
+                    let nameIndex = 1;
+                    while (usedNames.has(uniqueBaseName)) {
+                        uniqueBaseName = `${baseName}_${nameIndex++}`;
+                    }
+                    usedNames.add(uniqueBaseName);
+
+                    const imageName = `${uniqueBaseName}.${this.settings.imageType}`;
+                    const imagePath = normalizePath(`${folderPath}/${imageName}`);
+
+                    // Save the image file
+                    const arrayBufferImg = await result.blob.arrayBuffer();
+                    await this.app.vault.createBinary(imagePath, arrayBufferImg);
+
                     // Build the link string
                     let imageLink = '';
                     // Adjust image display width based on quality settings
                     if (result.qualityToUse < 1.0) {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}|${result.displayWidth}](${encodeURI(result.imagePath)})`;
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}|${result.displayWidth}](${encodeURI(imagePath)})`;
                     } else {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}](${encodeURI(result.imagePath)})`;
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}](${encodeURI(imagePath)})`;
                     }
                     
                     // Insert or store based on insertion method

@@ -7,6 +7,7 @@ export interface PluginSettings {
 	useDefaultDestinationFolder: boolean;
 	useCustomImageFolderName: boolean;
 	destinationFolder: string;
+	enableImageNaming: boolean;
 	enableHeaders: boolean;
 	headerSize: string;
 	headerExtractionSensitive: number;
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	useDefaultDestinationFolder: true,
 	useCustomImageFolderName: false,
 	destinationFolder: '',
+	enableImageNaming: false,
 	enableHeaders: false,
 	headerSize: "#",
 	headerExtractionSensitive: 1.2,
@@ -95,6 +97,16 @@ export class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.useCustomImageFolderName)
 				.onChange(async (value) => {
 					this.plugin.settings.useCustomImageFolderName = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Prompt for image names')
+			.setDesc('When enabled, you will be shown a preview of each page and prompted to give it a custom file name before it is saved.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableImageNaming)
+				.onChange(async (value) => {
+					this.plugin.settings.enableImageNaming = value;
 					await this.plugin.saveSettings();
 				}));
 
