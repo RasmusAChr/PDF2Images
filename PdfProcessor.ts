@@ -56,10 +56,9 @@ export class PdfProcessor {
             
             // Determine concurrency limit based on settings and total pages
             // Concurrency limit cannot exceed total pages to avoid unnecessary overhead
-            const CONCURRENCY_LIMIT = Math.min(
-                totalPages,
-                this.settings.maxConcurrentPages,
-            );
+            const CONCURRENCY_LIMIT = this.settings.enableImageNaming
+                ? 1
+                : Math.min(totalPages, this.settings.maxConcurrentPages);
             
             let completedPages = 0; // Counter for completed pages
             let lastExtractedHeader: string | null = null;  // For duplicate header checking
