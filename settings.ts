@@ -4,7 +4,7 @@ import { FolderSuggest } from './FolderSuggestModal';
 import type Pdf2Image from './main';
 
 export interface PluginSettings {
-	useDefaultDestinationFolder: boolean;
+	useCustomDestinationFolder: boolean;
 	useCustomImageFolderName: boolean;
 	destinationFolder: string;
 	enableImageNaming: boolean;
@@ -20,7 +20,7 @@ export interface PluginSettings {
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
-	useDefaultDestinationFolder: true,
+	useCustomDestinationFolder: false,
 	useCustomImageFolderName: false,
 	destinationFolder: '',
 	enableImageNaming: false,
@@ -55,60 +55,6 @@ export class PluginSettingPage extends PluginSettingTab {
 
 		// Clear existing content to allow re-rendering when settings change
 		containerEl.empty();
-
-		// Image Destination Folder settings
-		new Setting(containerEl).setName("Image Folder Settings").setHeading();
-
-		// Use default destination folder setting
-		new Setting(containerEl)
-			.setName('Use default destination folder')
-			.setDesc('When enabled, images will be saved in the default folder defined in Obsidian. When disabled, images will be saved in a user specified folder.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.useDefaultDestinationFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.useDefaultDestinationFolder = value;
-					await this.plugin.saveSettings();
-					this.display(); // Refresh the settings page to show/hide the header size setting
-				}));
-
-		/// Custom destination folder setting
-		if (!this.plugin.settings.useDefaultDestinationFolder) {
-			new Setting(containerEl)
-				.setName('Destination folder')
-				.setDesc('The folder where images will be saved.')
-				.addText(text => {
-					text
-						.setPlaceholder('Select a folder...')
-						.setValue(this.plugin.settings.destinationFolder)
-						.onChange(async (value) => {
-							this.plugin.settings.destinationFolder = value;
-							await this.plugin.saveSettings();
-						});
-
-					new FolderSuggest(this.app, text.inputEl);
-				});
-		}
-
-		// Custom Image Folder Name setting
-		new Setting(containerEl)
-			.setName('Use custom image folder name')
-			.setDesc('When enabled, images will be saved in a folder with a custom name.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.useCustomImageFolderName)
-				.onChange(async (value) => {
-					this.plugin.settings.useCustomImageFolderName = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Prompt for image names')
-			.setDesc('When enabled, you will be shown a preview of each page and prompted to give it a custom file name before it is saved.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.enableImageNaming)
-				.onChange(async (value) => {
-					this.plugin.settings.enableImageNaming = value;
-					await this.plugin.saveSettings();
-				}));
 
 		new Setting(containerEl).setName("Image Settings").setHeading();
 
@@ -252,5 +198,56 @@ export class PluginSettingPage extends PluginSettingTab {
 					});
 				text.inputEl.setAttribute('type', 'number');
 			});
+
+		// Use custom destination folder setting
+		new Setting(containerEl)
+			.setName('Use custom destination folder')
+			.setDesc('When enabled, images will be saved in a user specified folder. When disabled, images will be saved in the default folder defined in Obsidian.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.useCustomDestinationFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.useCustomDestinationFolder = value;
+					await this.plugin.saveSettings();
+					this.display(); // Refresh the settings page to show/hide the header size setting
+				}));
+
+		/// Custom destination folder setting
+		if (this.plugin.settings.useCustomDestinationFolder) {
+			new Setting(containerEl)
+				.setName('Destination folder')
+				.setDesc('The folder where images will be saved.')
+				.addText(text => {
+					text
+						.setPlaceholder('Select a folder...')
+						.setValue(this.plugin.settings.destinationFolder)
+						.onChange(async (value) => {
+							this.plugin.settings.destinationFolder = value;
+							await this.plugin.saveSettings();
+						});
+
+					new FolderSuggest(this.app, text.inputEl);
+				});
+		}
+
+		// Custom Image Folder Name setting
+		new Setting(containerEl)
+			.setName('Use custom image folder name')
+			.setDesc('When enabled, images will be saved in a folder with a custom name.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.useCustomImageFolderName)
+				.onChange(async (value) => {
+					this.plugin.settings.useCustomImageFolderName = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Prompt for image names')
+			.setDesc('When enabled, you will be shown a preview of each page and prompted to give it a custom file name before it is saved.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableImageNaming)
+				.onChange(async (value) => {
+					this.plugin.settings.enableImageNaming = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }

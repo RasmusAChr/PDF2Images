@@ -40,7 +40,7 @@ export function insertImageLink(editor: Editor, insertPosition: { line: number; 
  */
 export async function getAttachmentFolderPath(fileManager: FileManager, settings: PluginSettings) {
     // Check if custom destination folder is set in settings
-    if (settings.useDefaultDestinationFolder) { 
+    if (!settings.useCustomDestinationFolder) { 
         const basePath = fileManager.getAvailablePathForAttachment('');
         return basePath;
     } else {
