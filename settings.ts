@@ -208,10 +208,10 @@ export class PluginSettingPage extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.useCustomDestinationFolder = value;
 					await this.plugin.saveSettings();
-					this.display(); // Refresh the settings page to show/hide the header size setting
+					this.display(); // Refresh the settings page to show/hide the destination folder setting
 				}));
 
-		/// Custom destination folder setting
+		// Custom destination folder setting
 		if (this.plugin.settings.useCustomDestinationFolder) {
 			new Setting(containerEl)
 				.setName('Destination folder')
