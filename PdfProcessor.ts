@@ -95,7 +95,9 @@ export class PdfProcessor {
                 });
 
                 // Capture preview BEFORE clearing canvas
-                const dataUrl = canvas.toDataURL(`image/${this.settings.imageType}`, 0.9);
+                const dataUrl = this.settings.enableImageNaming
+                    ? canvas.toDataURL(`image/${this.settings.imageType}`, 0.9)
+                    : '';
 
                 // Explicitly clean up PDF.js resources (optimization)
                 page.cleanup();
