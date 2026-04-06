@@ -1,7 +1,7 @@
 import { App, Modal } from 'obsidian';
 
 export class ImageNamingModal extends Modal {
-    private resolve: (name: string) => void;
+    private resolve!: (name: string) => void;
     private inputValue: string = '';
 
     constructor(
@@ -12,7 +12,7 @@ export class ImageNamingModal extends Modal {
         private defaultName: string,  // fallback name (e.g. "page_3")
     ) {
         super(app);
-        // Prevent closing by clicking outside — user must confirm or skip
+        // Keep clicks inside the modal from bubbling; outside/backdrop clicks may still close it.
         this.modalEl.addEventListener('click', (e) => e.stopPropagation());
     }
 
@@ -30,7 +30,7 @@ export class ImageNamingModal extends Modal {
 
         // Header
         const header = contentEl.createEl('h2', {
-            text: `Name image — Page ${this.pageNum} of ${this.totalPages}`
+            text: `Name image - Page ${this.pageNum} of ${this.totalPages}`
         });
         header.style.textAlign = 'center';
         header.style.marginTop = '0';
