@@ -1,6 +1,7 @@
 import { App, Editor, Notice, normalizePath, FileManager } from 'obsidian';
 import { PluginSettings } from './settings';
-import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator } from './utils';
+import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator, sanitizeFolderName } from './utils';
+import { ImageNamingModal } from './ImageNamingModal';
 
 export class PdfProcessor {
     constructor(
@@ -10,7 +11,7 @@ export class PdfProcessor {
         private fileManager: FileManager // File manager instance
     ) {}
 
-    async process(editor: Editor, file: File, imageQuality: number) {
+    async process(editor: Editor, file: File, imageQuality: number, customFolderName: string) {
 
         // Initialize progress notice
         let progressNotice: Notice | null = null;
@@ -25,14 +26,28 @@ export class PdfProcessor {
 
             // --- 1. Setup Folder Structure ---
             const pdfName = file.name.replace('.pdf', ''); // Remove .pdf extension from file name
-            let cleanPdfName = pdfName.replace(/#/g, ''); // Clean name to avoid issues with folder names
+            
+            // Clean name to avoid issues with folder names
+            let cleanPdfName = this.settings.useCustomImageFolderName && customFolderName
+                ? sanitizeFolderName(customFolderName)
+                : sanitizeFolderName(pdfName);
+            
             let folderIndex = 0; // Initial folder index for uniqueness
-            let folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}`); // Initial folder path
+            let folderPath: string;
+            let baseFolderPath: string;
+            
+            try {
+                baseFolderPath = await getAttachmentFolderPath(this.fileManager, this.settings);
+                folderPath = normalizePath(`${baseFolderPath}/${cleanPdfName}`);
+            } catch (e) {
+                new Notice('No destination folder selected');
+                return; // No destination folder set
+            }
             
             // If folder with same name exists, append index to make it unique
             while (await this.app.vault.adapter.exists(folderPath)) {
                 folderIndex++;
-                folderPath = normalizePath(`${await getAttachmentFolderPath(this.fileManager)}/${cleanPdfName}_${folderIndex}`);
+                folderPath = normalizePath(`${baseFolderPath}/${cleanPdfName}_${folderIndex}`);
             }
             await this.app.vault.createFolder(folderPath); // Create the unique folder
 
@@ -41,13 +56,15 @@ export class PdfProcessor {
             
             // Determine concurrency limit based on settings and total pages
             // Concurrency limit cannot exceed total pages to avoid unnecessary overhead
-            const CONCURRENCY_LIMIT = Math.min(
-                totalPages,
-                this.settings.maxConcurrentPages,
-            );
+            const CONCURRENCY_LIMIT = this.settings.enableImageNaming
+                ? 1
+                : Math.min(totalPages, this.settings.maxConcurrentPages);
             
             let completedPages = 0; // Counter for completed pages
             let lastExtractedHeader: string | null = null;  // For duplicate header checking
+
+            // Track used names to avoid collisions when user enters duplicate names
+            const usedNames = new Set<string>();
 
             progressNotice = new Notice(`Processing PDF: ${completedPages}/${totalPages} pages`, 0); // Update notice to show start of progress
 
@@ -76,19 +93,17 @@ export class PdfProcessor {
                     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image blob failed')), `image/${this.settings.imageType}`, 0.9); // 0.9 is only for lossy formats
                 });
 
+                // Capture preview BEFORE clearing canvas
+                const dataUrl = this.settings.enableImageNaming
+                    ? canvas.toDataURL(`image/${this.settings.imageType}`, 0.9)
+                    : '';
+
                 // Explicitly clean up PDF.js resources (optimization)
                 page.cleanup();
 
                 // Force browser to dump canvas bitmap (optimization)
                 canvas.width = 0;
                 canvas.height = 0;
-
-                const imageName = `page_${pageNum}.${this.settings.imageType}`; // Get image name
-                const imagePath = `${folderPath}/${imageName}`; // Full path for image in vault
-                const arrayBufferImg = await blob.arrayBuffer(); // Convert Blob to ArrayBuffer for Obsidian Vault
-                
-                // File I/O - Create the image file in the vault
-                await this.app.vault.createBinary(imagePath, arrayBufferImg);
 
                 // Header Extraction
                 let rawHeader = '';
@@ -103,11 +118,12 @@ export class PdfProcessor {
 
                 return {
                     pageNum,
-                    imagePath,
-                    imageName,
                     rawHeader,
                     displayWidth,
-                    qualityToUse
+                    qualityToUse,
+                    blob,
+                    dataUrl,
+                    folderPath
                 };
             };
 
@@ -137,13 +153,44 @@ export class PdfProcessor {
                         }
                     }
 
+                    // Naming logic
+                    const defaultBaseName = `page_${result.pageNum}`;
+                    let baseName = defaultBaseName;
+
+                    if (this.settings.enableImageNaming) {
+                        const modal = new ImageNamingModal(
+                            this.app,
+                            result.dataUrl,
+                            result.pageNum,
+                            totalPages,
+                            defaultBaseName
+                        );
+                        baseName = await modal.waitForInput();
+                        baseName = sanitizeFolderName(baseName) || defaultBaseName;
+                    }
+
+                    // Ensure name uniqueness
+                    let uniqueBaseName = baseName;
+                    let nameIndex = 1;
+                    while (usedNames.has(uniqueBaseName)) {
+                        uniqueBaseName = `${baseName}_${nameIndex++}`;
+                    }
+                    usedNames.add(uniqueBaseName);
+
+                    const imageName = `${uniqueBaseName}.${this.settings.imageType}`;
+                    const imagePath = normalizePath(`${folderPath}/${imageName}`);
+
+                    // Save the image file
+                    const arrayBufferImg = await result.blob.arrayBuffer();
+                    await this.app.vault.createBinary(imagePath, arrayBufferImg);
+
                     // Build the link string
                     let imageLink = '';
                     // Adjust image display width based on quality settings
                     if (result.qualityToUse < 1.0) {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}|${result.displayWidth}](${encodeURI(result.imagePath)})`;
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}|${result.displayWidth}](${encodeURI(imagePath)})`;
                     } else {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${result.imageName}](${encodeURI(result.imagePath)})`;
+                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}](${encodeURI(imagePath)})`;
                     }
                     
                     // Insert or store based on insertion method

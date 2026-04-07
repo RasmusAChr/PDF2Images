@@ -1,4 +1,5 @@
 import { Editor, FileManager } from 'obsidian';
+import { PluginSettings } from './settings';
 
 /**
  * Returns the appropriate image separator based on the user's setting.
@@ -35,11 +36,33 @@ export function insertImageLink(editor: Editor, insertPosition: { line: number; 
 
 /**
  * Get the folder path where the attachments will be saved
- * Note: If the folder path is not set, use the current note's folder
+ * Note: If the folder path is not set, it will throw an error, which should be handled by the caller.
  */
-export async function getAttachmentFolderPath(fileManager: FileManager): Promise<string> {
-    const basePath = fileManager.getAvailablePathForAttachment('');
-    return basePath;
+export async function getAttachmentFolderPath(fileManager: FileManager, settings: PluginSettings) {
+    // Check if custom destination folder is set in settings
+    if (!settings.useCustomDestinationFolder) { 
+        const basePath = fileManager.getAvailablePathForAttachment('');
+        return basePath;
+    } else {
+        if (settings.destinationFolder === '') {
+            throw new Error('No destination folder selected');
+        } else {
+            return settings.destinationFolder;
+        }
+    }
+}
+/** 
+ * Sanitizes a folder name by removing illegal characters and trimming whitespace.
+ * @param name - The folder name to sanitize.
+ * @returns The sanitized folder name.
+ */
+export function sanitizeFolderName(name: string): string {
+    return name
+        .replace(/[#\/\\:*?"<>|]/g, '')  // strip illegal/path chars
+        .replace(/\.\./g, '')             // strip traversal sequences
+        .replace(/^[\s.]+|[\s.]+$/g, '')  // trim leading/trailing dots and spaces
+        .replace(/\s+/g, ' ')             // collapse internal whitespace
+        .slice(0, 255);                   // enforce reasonable max length
 }
 
 /** 
