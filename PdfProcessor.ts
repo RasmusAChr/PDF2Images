@@ -3,6 +3,14 @@ import { PluginSettings } from './settings';
 import { extractHeader, getAttachmentFolderPath, insertImageLink, imageSeparator, sanitizeFolderName } from './utils';
 import { ImageNamingModal } from './ImageNamingModal';
 
+// Display width (in the markdown embed, not the render resolution) requested for
+// images that should fill the note. Obsidian's image embeds accept only pixel
+// widths, not percentages, but it clamps any image wider than the note down to
+// the note's own width via its max-width:100% CSS. Requesting a width wider than
+// any realistic note therefore makes the image fill the note exactly, regardless
+// of the PDF's own page size or the chosen render quality.
+const MIN_FULL_WIDTH_PX = 1600;
+
 export class PdfProcessor {
     constructor(
         private app: App, // Obsidian App instance
@@ -73,7 +81,7 @@ export class PdfProcessor {
                 const page = await pdf.getPage(pageNum); // Get the page to process
                 const qualityToUse = imageQuality ?? this.settings.imageResolution; // Determine quality to use
                 const viewport = page.getViewport({ scale: qualityToUse }); // Get viewport at desired scale
-                
+
                 // Get original dimensions to show with 100% width
                 const originalViewport = page.getViewport({ scale: 1.0 });
                 const displayWidth = Math.round(originalViewport.width);
@@ -186,11 +194,22 @@ export class PdfProcessor {
 
                     // Build the link string
                     let imageLink = '';
-                    // Adjust image display width based on quality settings
-                    if (result.qualityToUse < 1.0) {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}|${result.displayWidth}](${encodeURI(imagePath)})`;
+                    const headerPrefix = finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : '';
+                    if (this.settings.useOriginalResolution) {
+                        // Size the image by its actual render quality: pin the display width to
+                        // the PDF's own page width when the render was downscaled (so it isn't
+                        // shown at its smaller native pixel size), otherwise leave it unset.
+                        if (result.qualityToUse < 1.0) {
+                            imageLink = `${headerPrefix}![${imageName}|${result.displayWidth}](${encodeURI(imagePath)})`;
+                        } else {
+                            imageLink = `${headerPrefix}![${imageName}](${encodeURI(imagePath)})`;
+                        }
                     } else {
-                        imageLink = `${finalHeader ? `${this.settings.headerSize} ${finalHeader}\n` : ''}![${imageName}](${encodeURI(imagePath)})`;
+                        // Default: request a display width wider than any realistic note so
+                        // Obsidian's max-width:100% CSS clamps it down to exactly fill the note
+                        // (see MIN_FULL_WIDTH_PX). This only changes the displayed size, not the
+                        // render resolution, so the image quality setting still controls file size.
+                        imageLink = `${headerPrefix}![${imageName}|${MIN_FULL_WIDTH_PX}](${encodeURI(imagePath)})`;
                     }
                     
                     // Insert or store based on insertion method

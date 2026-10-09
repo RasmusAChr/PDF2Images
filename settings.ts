@@ -13,6 +13,7 @@ export interface PluginSettings {
 	headerExtractionSensitive: number;
 	removeHeaderDuplicates: boolean;
 	imageResolution: number;
+	useOriginalResolution: boolean;
 	imageSeparator: number;
 	insertionMethod: string;
 	maxConcurrentPages: number;
@@ -29,6 +30,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	headerExtractionSensitive: 1.2,
 	removeHeaderDuplicates: false,
 	imageResolution: 1,
+	useOriginalResolution: false,
 	imageSeparator: 0,
 	insertionMethod: 'Procedural',
 	maxConcurrentPages: 50,
@@ -71,6 +73,17 @@ export class PluginSettingPage extends PluginSettingTab {
 				.setValue(this.plugin.settings.imageResolution.toString())
 				.onChange(async (value) => {
 					this.plugin.settings.imageResolution = parseFloat(value);
+					await this.plugin.saveSettings();
+				}));
+
+		// Use Original Resolution setting
+		new Setting(containerEl)
+			.setName('Use original resolution')
+			.setDesc('When enabled, images are sized according to the image quality setting above. When disabled (default), images are always stretched to fill the full width of the note, regardless of the PDF\'s own page size.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.useOriginalResolution)
+				.onChange(async (value) => {
+					this.plugin.settings.useOriginalResolution = value;
 					await this.plugin.saveSettings();
 				}));
 
